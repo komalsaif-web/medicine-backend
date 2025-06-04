@@ -4,10 +4,18 @@ const path = require('path');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins (change to specific domain in production if needed)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false // set true only if you need cookies/auth headers (not needed here)
+}));
+
 app.use(express.json());
+
+// Serve static files
 app.use('/images-db', express.static(path.join(__dirname, 'images-db')));
-app.use(express.static(path.join(__dirname, 'public'))); // Serve favicon.ico and favicon.png from public
+app.use(express.static(path.join(__dirname, 'public'))); // favicon, etc.
 
 // Routes
 const imageRoutes = require('./routes/imageRoutes');
