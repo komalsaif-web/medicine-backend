@@ -5,6 +5,7 @@ const util = require('util');
 const axios = require('axios');
 const stringSimilarity = require('string-similarity');
 const Tesseract = require('tesseract.js');
+const FormData = require('form-data');
 
 const query = util.promisify(connection.query).bind(connection);
 
@@ -35,7 +36,7 @@ const ocrWithTesseract = async (filePath) => {
   return { ParsedResults: [{ ParsedText: text }], IsErroredOnProcessing: false };
 };
 
-// Controller without Imagga
+// Main Controller
 exports.analyzeImage = async (req, res) => {
   let imagePath;
   try {
@@ -43,6 +44,7 @@ exports.analyzeImage = async (req, res) => {
       return res.status(400).json({ error: 'No image uploaded' });
     }
 
+    // Save uploaded image
     const tempPath = req.file.path;
     const ext = path.extname(req.file.originalname).toLowerCase();
     const newPath = tempPath + ext;
@@ -51,12 +53,12 @@ exports.analyzeImage = async (req, res) => {
 
     const results = [];
 
-    // OCR processing
+    // OCR
     let ocrResult;
     try {
       ocrResult = await ocrFromFile(imagePath);
     } catch {
-      console.warn('Falling back to Tesseract.js');
+      console.warn('⚠️ Falling back to Tesseract.js');
       ocrResult = await ocrWithTesseract(imagePath);
     }
 
@@ -68,10 +70,14 @@ exports.analyzeImage = async (req, res) => {
     const cleanText = extractedText.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
     console.log('📝 Extracted Text:', cleanText);
 
-    const medicines = await query('SELECT * FROM medicines');
+    // ✅ FIXED: Use .rows to get arrays
+    const medicineRes = await query('SELECT * FROM medicines');
+    const medicines = medicineRes.rows;
+
+    const imageFilesRes = await query('SELECT image_name FROM medicine_image_name');
+    const imageFiles = imageFilesRes.rows.map(row => row.image_name);
+
     const medicineNames = medicines.map(m => m.name.toLowerCase());
-    const imageFilesResult = await query('SELECT image_name FROM medicine_image_name');
-    const imageFiles = imageFilesResult.map(row => row.image_name);
 
     const findAndAddMatches = (imageName, medicine, confidence, matchType, matchedTerm) => {
       const fullImagePath = path.join(__dirname, '..', 'images-db', imageName);
@@ -89,17 +95,17 @@ exports.analyzeImage = async (req, res) => {
       }
     };
 
-    // Matching logic
+    // Step 1: Direct filename match
     imageFiles.forEach(file => {
       const fileName = path.basename(file, path.extname(file)).toLowerCase();
       const fileNameClean = fileName.replace(/[-_]/g, ' ');
       const medicine = medicines.find(m => m.name.toLowerCase().replace(/\s+/g, '_') === fileName);
-
       if (cleanText.includes(fileNameClean)) {
         findAndAddMatches(file, medicine, 'high', 'direct_filename', fileNameClean);
       }
     });
 
+    // Step 2: Exact text match
     if (results.length === 0) {
       medicineNames.forEach((medName, index) => {
         if (cleanText.includes(medName)) {
@@ -113,6 +119,7 @@ exports.analyzeImage = async (req, res) => {
       });
     }
 
+    // Step 3: Partial text match
     if (results.length === 0) {
       medicineNames.forEach((medName, index) => {
         const medWords = medName.split(' ').filter(w => w.length > 3);
@@ -130,6 +137,7 @@ exports.analyzeImage = async (req, res) => {
       });
     }
 
+    // Step 4: Fuzzy match
     if (results.length === 0) {
       let bestMatch = { file: null, similarity: 0, medicine: null };
       imageFiles.forEach(file => {
@@ -153,11 +161,12 @@ exports.analyzeImage = async (req, res) => {
       }
     }
 
-    // Clean up uploaded file
+    // Cleanup uploaded image
     if (imagePath && fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
 
+    // Respond
     if (results.length > 0) {
       const uniqueResults = results.filter((t, i, self) =>
         i === self.findIndex(u => u.imageUrl === t.imageUrl)
@@ -188,6 +197,7 @@ exports.analyzeImage = async (req, res) => {
         availableImages: allImages
       });
     }
+
   } catch (error) {
     console.error('Controller Error:', error);
     if (imagePath && fs.existsSync(imagePath)) {
