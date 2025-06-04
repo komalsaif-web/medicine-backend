@@ -1,10 +1,10 @@
 const path = require('path');
 const fs = require('fs');
-const connection = require('./config/db'); 
+const pool = require('./config/db'); 
 
 const medicines = [
   {
-    barcode: '501735350089',
+    barcode: '5017353500809',
     name: 'Paracetamol',
     price: 10.5,
     fakeOrReal: 'real',
@@ -94,52 +94,45 @@ const medicines = [
     "additionalInformation": "Non-drowsy formula. Take once daily."
   }
 ];
-
 function sanitizeFilename(name) {
   return name.toLowerCase().replace(/[^a-z0-9]/gi, '').replace(/\s+/g, '');
 }
 
 async function seedMedicines() {
   try {
-    console.log(' Deleting old data...');
-    await new Promise((resolve, reject) => {
-      connection.query('DELETE FROM medicines', (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      });
-    });
+    console.log('🗑️ Deleting old medicines data...');
+    await pool.query('DELETE FROM medicines');
 
-    console.log(' Inserting seed data...');
+    console.log('💾 Inserting seed medicines with images...');
     for (const med of medicines) {
       const filename = sanitizeFilename(med.name) + '.png';
-      const imagePath = path.join(__dirname, './images-db', filename);
+      const imagePath = path.join(__dirname, 'images-db', filename);
       const image = fs.existsSync(imagePath) ? `/images/${filename}` : null;
 
       const sql = `INSERT INTO medicines 
         (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation, image) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
 
-      await new Promise((resolve, reject) => {
-        connection.query(sql, [
-          med.barcode,
-          med.name,
-          med.price,
-          med.fakeOrReal || 'real',
-          med.mg,
-          med.purpose,
-          med.additionalInformation,
-          image,
-        ], (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        });
-      });
+      const values = [
+        med.barcode,
+        med.name,
+        med.price,
+        med.fakeOrReal || 'real',
+        med.mg,
+        med.purpose,
+        med.additionalInformation,
+        image,
+      ];
+
+      await pool.query(sql, values);
+      console.log('✅ Inserted medicine:', med.name);
     }
 
-    console.log(' Seed data inserted successfully.');
+    console.log('🎉 All medicines seeded successfully!');
   } catch (err) {
-    console.error(' Error inserting seed data:', err);
+    console.error('❌ Error inserting seed medicines:', err);
   } finally {
+    await pool.end();
     process.exit();
   }
 }

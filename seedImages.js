@@ -1,56 +1,36 @@
 const fs = require('fs');
 const path = require('path');
-const connection = require('./config/db');
+const pool = require('./config/db');
 
 const imgDir = path.join(__dirname, 'images-db');
 
 async function seedImageNames() {
   try {
-    // Step 1: Create the table if not exists
+    // Create medicine_image_name table
     const createTableSQL = `
       CREATE TABLE IF NOT EXISTS medicine_image_name (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         image_name VARCHAR(255) UNIQUE
       );
     `;
 
-    console.log('🔧 Creating table if not exists...');
-    await new Promise((resolve, reject) => {
-      connection.query(createTableSQL, (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      });
-    });
+    console.log('🔧 Creating medicine_image_name table if not exists...');
+    await pool.query(createTableSQL);
 
-    // Step 2: Read images directory
-    const files = await new Promise((resolve, reject) => {
-      fs.readdir(imgDir, (err, files) => {
-        if (err) return reject(err);
-        resolve(files);
-      });
-    });
+    // Read image files
+    const files = await fs.promises.readdir(imgDir);
 
-    // Step 3: Insert unique image names
+    // Insert image names if not already there
     for (const file of files) {
-      const checkQuery = 'SELECT COUNT(*) as count FROM medicine_image_name WHERE image_name = ?';
-      const exists = await new Promise((resolve, reject) => {
-        connection.query(checkQuery, [file], (err, results) => {
-          if (err) return reject(err);
-          resolve(results[0].count > 0);
-        });
-      });
+      const checkQuery = 'SELECT COUNT(*) FROM medicine_image_name WHERE image_name = $1';
+      const result = await pool.query(checkQuery, [file]);
 
-      if (!exists) {
-        const insertQuery = 'INSERT INTO medicine_image_name (image_name) VALUES (?)';
-        await new Promise((resolve, reject) => {
-          connection.query(insertQuery, [file], (err) => {
-            if (err) return reject(err);
-            console.log('✅ Inserted:', file);
-            resolve();
-          });
-        });
+      if (parseInt(result.rows[0].count) === 0) {
+        const insertQuery = 'INSERT INTO medicine_image_name (image_name) VALUES ($1)';
+        await pool.query(insertQuery, [file]);
+        console.log('✅ Inserted image name:', file);
       } else {
-        console.log('⚠️ Already exists:', file);
+        console.log('⚠️ Image name already exists:', file);
       }
     }
 
@@ -58,7 +38,7 @@ async function seedImageNames() {
   } catch (err) {
     console.error('❌ Error seeding image names:', err);
   } finally {
-    connection.end(); // Cleanly close the DB connection
+    await pool.end();
     process.exit();
   }
 }

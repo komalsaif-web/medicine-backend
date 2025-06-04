@@ -1,62 +1,97 @@
-const connection = require('../config/db');
+const pool = require('../config/db');
 
-// Updated table with `purpose` and `additionalInformation`
+// Create enum type for fakeOrReal if not exists
+const createTypeQuery = `
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fake_or_real_enum') THEN
+    CREATE TYPE fake_or_real_enum AS ENUM ('fake', 'real');
+  END IF;
+END
+$$;
+`;
+
+// Create medicines table with image column
 const createTableQuery = `
 CREATE TABLE IF NOT EXISTS medicines (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   barcode VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
-  price DECIMAL(10, 2) NOT NULL,
-  fakeOrReal ENUM('fake', 'real') NOT NULL DEFAULT 'real',
+  price NUMERIC(10, 2) NOT NULL,
+  fakeOrReal fake_or_real_enum NOT NULL DEFAULT 'real',
   mg VARCHAR(50),
   purpose TEXT,
   additionalInformation TEXT,
+  image TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
+);
 `;
 
-// Table creation
-connection.query(createTableQuery, (err) => {
-  if (err) console.error('Table creation error: ', err);
-  else console.log('Medicines table ready.');
-});
+// Add image column if missing (in case table existed before without image)
+const addImageColumnQuery = `
+ALTER TABLE medicines ADD COLUMN IF NOT EXISTS image TEXT;
+`;
+
+// Run table and type creation on startup
+(async () => {
+  try {
+    await pool.query(createTypeQuery);
+    await pool.query(createTableQuery);
+    await pool.query(addImageColumnQuery);
+    console.log('Medicines table ready with image column.');
+  } catch (err) {
+    console.error('Table creation error:', err);
+  }
+})();
 
 module.exports = {
   create: (medicine, callback) => {
-    const sql = `INSERT INTO medicines (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    connection.query(sql, [
+    const sql = `
+      INSERT INTO medicines (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation, image)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
+    `;
+    pool.query(sql, [
       medicine.barcode,
       medicine.name,
       medicine.price,
       medicine.fakeOrReal || 'real',
       medicine.mg,
       medicine.purpose,
-      medicine.additionalInformation
+      medicine.additionalInformation,
+      medicine.image || null
     ], callback);
   },
 
   findByBarcode: (barcode, callback) => {
-    connection.query('SELECT * FROM medicines WHERE barcode = ?', [barcode], callback);
+    const sql = `SELECT * FROM medicines WHERE barcode = $1`;
+    pool.query(sql, [barcode], callback);
   },
 
   findAll: (callback) => {
-    connection.query('SELECT * FROM medicines', callback);
+    pool.query('SELECT * FROM medicines', callback);
   },
 
   updateByBarcode: (barcode, medicine, callback) => {
-    const sql = `UPDATE medicines SET name = ?, price = ?, fakeOrReal = ?, mg = ?, purpose = ?, additionalInformation = ? WHERE barcode = ?`;
-    connection.query(sql, [
+    const sql = `
+      UPDATE medicines 
+      SET name = $1, price = $2, fakeOrReal = $3, mg = $4, purpose = $5, additionalInformation = $6, image = $7
+      WHERE barcode = $8
+    `;
+    pool.query(sql, [
       medicine.name,
       medicine.price,
       medicine.fakeOrReal,
       medicine.mg,
       medicine.purpose,
       medicine.additionalInformation,
+      medicine.image || null,
       barcode
     ], callback);
   },
 
   deleteByBarcode: (barcode, callback) => {
-    connection.query('DELETE FROM medicines WHERE barcode = ?', [barcode], callback);
+    const sql = `DELETE FROM medicines WHERE barcode = $1`;
+    pool.query(sql, [barcode], callback);
   }
 };
