@@ -33,7 +33,7 @@ const ocrWithTesseract = async (filePath) => {
   return { ParsedResults: [{ ParsedText: text }], IsErroredOnProcessing: false };
 };
 
-// Try to get public URL for given token and extension
+// Updated: Try to get public URL and filename for a matching token
 async function getPublicUrlForToken(token) {
   const extensions = ['png', 'jpg', 'jpeg'];
   for (const ext of extensions) {
@@ -44,8 +44,8 @@ async function getPublicUrlForToken(token) {
 
     if (!error && data?.publicUrl) {
       try {
-        await axios.head(data.publicUrl); // Check if file exists
-        return data.publicUrl;
+        await axios.head(data.publicUrl); // Check if image exists
+        return { url: data.publicUrl, filename }; // Return both URL and filename
       } catch {
         continue;
       }
@@ -54,7 +54,7 @@ async function getPublicUrlForToken(token) {
   return null;
 }
 
-// Convert image at URL to base64
+// Convert image URL to base64
 const getBase64FromUrl = async (url) => {
   const response = await axios.get(url, { responseType: 'arraybuffer' });
   const contentType = response.headers['content-type'];
@@ -62,8 +62,10 @@ const getBase64FromUrl = async (url) => {
   return `data:${contentType};base64,${base64}`;
 };
 
+// Main controller
 exports.analyzeImage = async (req, res) => {
   let imagePath;
+  let matchedFilename = null;
 
   try {
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
@@ -75,6 +77,7 @@ exports.analyzeImage = async (req, res) => {
     try {
       ocrResult = await ocrFromFile(imagePath);
     } catch {
+      console.warn('⚠️ Falling back to Tesseract.js');
       ocrResult = await ocrWithTesseract(imagePath);
     }
 
@@ -94,10 +97,11 @@ exports.analyzeImage = async (req, res) => {
 
     for (const token of tokens) {
       if (token.length < 3) continue;
-      const url = await getPublicUrlForToken(token);
-      if (url) {
-        foundImageUrl = url;
+      const result = await getPublicUrlForToken(token);
+      if (result) {
+        foundImageUrl = result.url;
         matchedToken = token;
+        matchedFilename = result.filename;
         break;
       }
     }
@@ -118,6 +122,7 @@ exports.analyzeImage = async (req, res) => {
     return res.json({
       success: true,
       detectedWord: matchedToken,
+      filename: matchedFilename,
       base64Image,
     });
 
