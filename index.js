@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const serverless = require('serverless-http');
+
 const app = express();
 
 // CORS setup
@@ -34,5 +36,5 @@ app.get('/', (req, res) => {
   res.send('Welcome to the Pharmacy Medicine API');
 });
 
-// Export for Vercel
-module.exports = app;
+// ✅ Export the serverless handler for Vercel
+module.exports = serverless(app);
