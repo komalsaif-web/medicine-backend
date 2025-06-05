@@ -5,14 +5,15 @@ const FormData = require('form-data');
 const Tesseract = require('tesseract.js');
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = 'https://kzhbzvkfpjftklzcydze.supabase.co';
-const supabaseKey = 'your_supabase_anon_key';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(
+  'https://kzhbzvkfpjftklzcydze.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aGJ6dmtmcGpmdGtsemN5ZHplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTAzODM0MiwiZXhwIjoyMDY0NjE0MzQyfQ.2BkpY_vf1B6KiJ8X1ykQZVaS6qsdHjjHuB0NuRCy5d4'
+);
 
 // OCR using OCR.Space
 const ocrFromFile = async (filePath) => {
   const formData = new FormData();
-  formData.append('apikey', 'your_ocr_space_api_key');
+  formData.append('apikey', 'K84923390588957');
   formData.append('language', 'eng');
   formData.append('isOverlayRequired', 'false');
   formData.append('file', fs.createReadStream(filePath));
@@ -26,80 +27,74 @@ const ocrFromFile = async (filePath) => {
   return response.data;
 };
 
-// Fallback OCR using Tesseract.js
+// Tesseract fallback
 const ocrWithTesseract = async (filePath) => {
-  const { data: { text } } = await Tesseract.recognize(
-    filePath,
-    'eng',
-    { logger: m => console.log('Tesseract Progress:', m) }
-  );
+  const { data: { text } } = await Tesseract.recognize(filePath, 'eng');
   return { ParsedResults: [{ ParsedText: text }], IsErroredOnProcessing: false };
 };
 
-// Get public URL from Supabase for given filename (try png, then jpg)
-async function getMedicineImageUrl(baseName) {
+// Try to get public URL for given token and extension
+async function getPublicUrlForToken(token) {
   const extensions = ['png', 'jpg', 'jpeg'];
   for (const ext of extensions) {
-    const fileName = `${baseName}.${ext}`;
+    const filename = `${token.toLowerCase()}.${ext}`;
     const { data, error } = supabase.storage
       .from('medicine-images')
-      .getPublicUrl(fileName);
+      .getPublicUrl(filename);
 
     if (!error && data?.publicUrl) {
-      // To verify file actually exists, try HEAD request
       try {
-        await axios.head(data.publicUrl);
+        await axios.head(data.publicUrl); // Check if file exists
         return data.publicUrl;
       } catch {
-        // File doesn't exist at this url, try next
+        continue;
       }
     }
   }
   return null;
 }
 
+// Convert image at URL to base64
+const getBase64FromUrl = async (url) => {
+  const response = await axios.get(url, { responseType: 'arraybuffer' });
+  const contentType = response.headers['content-type'];
+  const base64 = Buffer.from(response.data, 'binary').toString('base64');
+  return `data:${contentType};base64,${base64}`;
+};
+
 exports.analyzeImage = async (req, res) => {
   let imagePath;
 
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
     imagePath = req.file.path;
 
-    // Step 1: OCR try
+    // Step 1: OCR or fallback
     let ocrResult;
     try {
       ocrResult = await ocrFromFile(imagePath);
     } catch {
-      console.warn('⚠️ Falling back to Tesseract.js');
       ocrResult = await ocrWithTesseract(imagePath);
     }
 
     if (ocrResult.IsErroredOnProcessing) {
-      throw new Error(ocrResult.ErrorMessage?.join(', ') || 'OCR failed');
+      throw new Error('OCR failed');
     }
 
     let extractedText = ocrResult.ParsedResults[0]?.ParsedText || '';
-    extractedText = extractedText.toLowerCase().replace(/[\n\r]+/g, ' ').replace(/[^\w\s]/g, ' ').trim();
-
-    console.log('📝 Extracted Text:', extractedText);
-
-    if (!extractedText) {
-      return res.status(404).json({ success: false, message: 'No text detected' });
-    }
-
-    // Step 2: Tokenize text and try to find any medicine image by token
+    extractedText = extractedText.toLowerCase().replace(/[^a-z0-9\s]/gi, ' ').trim();
     const tokens = extractedText.split(/\s+/);
 
+    console.log('🧠 Tokens:', tokens);
+
+    // Step 2: Find first token that matches an image in Supabase
     let foundImageUrl = null;
     let matchedToken = null;
 
     for (const token of tokens) {
-      if (token.length < 3) continue; // ignore too short tokens
-
-      const url = await getMedicineImageUrl(token);
+      if (token.length < 3) continue;
+      const url = await getPublicUrlForToken(token);
       if (url) {
         foundImageUrl = url;
         matchedToken = token;
@@ -107,33 +102,34 @@ exports.analyzeImage = async (req, res) => {
       }
     }
 
-    // Step 3: Delete temp image
     if (imagePath && fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
+      fs.unlinkSync(imagePath); // delete temp file
     }
 
-    if (foundImageUrl) {
-      return res.json({
-        success: true,
-        detectedWord: matchedToken,
-        medicineImageUrl: foundImageUrl,
-      });
-    } else {
+    if (!foundImageUrl) {
       return res.status(404).json({
         success: false,
-        message: 'No matching medicine image found for detected text',
+        message: 'No matching image found in Supabase for detected text',
       });
     }
 
+    const base64Image = await getBase64FromUrl(foundImageUrl);
+
+    return res.json({
+      success: true,
+      detectedWord: matchedToken,
+      base64Image,
+    });
+
   } catch (error) {
-    console.error('Controller Error:', error);
+    console.error('❌ Error:', error.message);
     if (imagePath && fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
     return res.status(500).json({
       success: false,
-      error: 'Processing failed',
-      details: error.message,
+      message: 'Server error',
+      error: error.message,
     });
   }
 };
