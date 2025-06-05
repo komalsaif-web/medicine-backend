@@ -33,12 +33,12 @@ const ocrWithTesseract = async (filePath) => {
   return { ParsedResults: [{ ParsedText: text }], IsErroredOnProcessing: false };
 };
 
-// Updated: Try to get public URL and filename for a matching token
+// Try to get public URL and filename for a matching token
 async function getPublicUrlForToken(token) {
   const extensions = ['png', 'jpg', 'jpeg'];
   for (const ext of extensions) {
     const filename = `${token.toLowerCase()}.${ext}`;
-    const { data, error } = supabase.storage
+    const { data, error } = await supabase.storage
       .from('medicine-images')
       .getPublicUrl(filename);
 
@@ -53,14 +53,6 @@ async function getPublicUrlForToken(token) {
   }
   return null;
 }
-
-// Convert image URL to base64
-const getBase64FromUrl = async (url) => {
-  const response = await axios.get(url, { responseType: 'arraybuffer' });
-  const contentType = response.headers['content-type'];
-  const base64 = Buffer.from(response.data, 'binary').toString('base64');
-  return `data:${contentType};base64,${base64}`;
-};
 
 // Main controller
 exports.analyzeImage = async (req, res) => {
@@ -107,23 +99,21 @@ exports.analyzeImage = async (req, res) => {
     }
 
     if (imagePath && fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath); // delete temp file
+      fs.unlinkSync(imagePath); // Delete temp file
     }
 
     if (!foundImageUrl) {
       return res.status(404).json({
         success: false,
-        message: 'No matching image found in Supabase for detected text',
+        message: 'No matching image found',
+        detectedWord: tokens.length > 0 ? tokens[0] : null, // Return first token or null
       });
     }
-
-    const base64Image = await getBase64FromUrl(foundImageUrl);
 
     return res.json({
       success: true,
       detectedWord: matchedToken,
       filename: matchedFilename,
-      base64Image,
     });
 
   } catch (error) {
