@@ -5,17 +5,25 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: '*', // Allow all origins (change to specific domain in production if needed)
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false // set true only if you need cookies/auth headers (not needed here)
+  credentials: false
 }));
 
 app.use(express.json());
 
+// ⬅️ Add this to avoid auth or route blocking on OPTIONS requests
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // Serve static files
 app.use('/images-db', express.static(path.join(__dirname, 'images-db')));
-app.use(express.static(path.join(__dirname, 'public'))); // favicon, etc.
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 const imageRoutes = require('./routes/imageRoutes');
