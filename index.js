@@ -1,28 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const serverless = require('serverless-http');
-
 const app = express();
 
-// CORS setup
+// Middleware
 app.use(cors({
-  origin: '*',
+  origin: '*', // Allow all origins (change to specific domain in production if needed)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false
+  credentials: false // set true only if you need cookies/auth headers (not needed here)
 }));
 
 app.use(express.json());
 
-// Preflight OPTIONS requests
-app.options('*', (req, res) => {
-  res.sendStatus(200);
-});
-
-// Static file serving
+// Serve static files
 app.use('/images-db', express.static(path.join(__dirname, 'images-db')));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'))); // favicon, etc.
 
 // Routes
 const imageRoutes = require('./routes/imageRoutes');
@@ -36,5 +29,5 @@ app.get('/', (req, res) => {
   res.send('Welcome to the Pharmacy Medicine API');
 });
 
-// ✅ Export the serverless handler for Vercel
-module.exports = serverless(app);
+// Export for Vercel
+module.exports = app;
