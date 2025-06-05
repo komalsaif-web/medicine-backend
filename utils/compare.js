@@ -12,7 +12,7 @@ const supabaseUrl = 'https://kzhbzvkfpjftklzcydze.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // 🔐 Make sure this stays safe
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Function to load PNG image from file
+// Load PNG image
 function loadPNG(filePath) {
   return new Promise((resolve, reject) => {
     fs.createReadStream(filePath)
@@ -24,13 +24,13 @@ function loadPNG(filePath) {
   });
 }
 
-// Compare two images using pixelmatch
+// Compare two images
 async function compareImages(img1Path, img2Path) {
   const img1 = await loadPNG(img1Path);
   const img2 = await loadPNG(img2Path);
 
   if (img1.width !== img2.width || img1.height !== img2.height) {
-    return 0; // Can't compare different sizes
+    return 0; // Different dimensions
   }
 
   const diff = new PNG({ width: img1.width, height: img1.height });
@@ -42,11 +42,11 @@ async function compareImages(img1Path, img2Path) {
   return similarity;
 }
 
-// Get public URL from Supabase Storage
+// ✅ Corrected public URL function (removed 'uploads/')
 function getSupabaseImageUrl(fileName) {
   const { data, error } = supabase.storage
     .from('medicine-images')
-    .getPublicUrl(`uploads/${fileName}`);
+    .getPublicUrl(fileName);
 
   if (error || !data.publicUrl) {
     console.error('❌ Supabase public URL error:', error);
@@ -56,7 +56,7 @@ function getSupabaseImageUrl(fileName) {
   return data.publicUrl;
 }
 
-// Download image from URL to temporary local file
+// Download image from URL
 async function downloadImageToTemp(url) {
   const response = await axios({ url, responseType: 'arraybuffer' });
   const tempFile = tmp.fileSync({ postfix: '.png' });
@@ -64,7 +64,7 @@ async function downloadImageToTemp(url) {
   return tempFile.name;
 }
 
-// MAIN FUNCTION: Compare uploaded image with database images
+// 🔍 Compare user image with database images
 async function compareWithDatabase(userImagePath) {
   return new Promise((resolve, reject) => {
     connection.query('SELECT * FROM medicines', async (err, rows) => {
@@ -76,11 +76,18 @@ async function compareWithDatabase(userImagePath) {
       for (let medicine of rows) {
         const fileName = `${medicine.barcode}.png`;
         const publicUrl = getSupabaseImageUrl(fileName);
-        if (!publicUrl) continue;
+
+        if (!publicUrl) {
+          console.warn(`⚠️ Skipping ${fileName} (no public URL)`);
+          continue;
+        }
 
         try {
+          console.log(`🔄 Comparing with ${fileName}`);
           const tempStoredImgPath = await downloadImageToTemp(publicUrl);
           const similarity = await compareImages(userImagePath, tempStoredImgPath);
+
+          console.log(`📊 Similarity with ${medicine.name}: ${similarity.toFixed(2)}%`);
 
           if (similarity > bestScore) {
             bestScore = similarity;
@@ -92,7 +99,7 @@ async function compareWithDatabase(userImagePath) {
             };
           }
 
-          fs.unlinkSync(tempStoredImgPath); // cleanup
+          fs.unlinkSync(tempStoredImgPath); // Cleanup
         } catch (e) {
           console.error(`❌ Error comparing with ${medicine.barcode}:`, e);
           continue;
