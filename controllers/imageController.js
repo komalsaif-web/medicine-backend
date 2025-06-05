@@ -6,14 +6,13 @@ const Tesseract = require('tesseract.js');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = 'https://kzhbzvkfpjftklzcydze.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aGJ6dmtmcGpmdGtsemN5ZHplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTAzODM0MiwiZXhwIjoyMDY0NjE0MzQyfQ.2BkpY_vf1B6KiJ8X1ykQZVaS6qsdHjjHuB0NuRCy5d4';
-
+const supabaseKey = 'your_supabase_anon_key';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // OCR using OCR.Space
 const ocrFromFile = async (filePath) => {
   const formData = new FormData();
-  formData.append('apikey', 'K84923390588957');
+  formData.append('apikey', 'your_ocr_space_api_key');
   formData.append('language', 'eng');
   formData.append('isOverlayRequired', 'false');
   formData.append('file', fs.createReadStream(filePath));
@@ -37,36 +36,28 @@ const ocrWithTesseract = async (filePath) => {
   return { ParsedResults: [{ ParsedText: text }], IsErroredOnProcessing: false };
 };
 
-// Supabase Storage upload function
-const uploadToSupabaseStorage = async (filePath, originalName) => {
-  const fileBuffer = fs.readFileSync(filePath);
-  const fileName = `uploads/${Date.now()}_${originalName}`; // folder + unique filename
+// Get public URL from Supabase for given filename (try png, then jpg)
+async function getMedicineImageUrl(baseName) {
+  const extensions = ['png', 'jpg', 'jpeg'];
+  for (const ext of extensions) {
+    const fileName = `${baseName}.${ext}`;
+    const { data, error } = supabase.storage
+      .from('medicine-images')
+      .getPublicUrl(fileName);
 
-  const { data, error } = await supabase.storage
-    .from('medicine-images') // Your bucket name in Supabase Storage
-    .upload(fileName, fileBuffer, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: 'image/jpeg', // better to detect mimetype dynamically if possible
-    });
-
-  if (error) {
-    throw error;
+    if (!error && data?.publicUrl) {
+      // To verify file actually exists, try HEAD request
+      try {
+        await axios.head(data.publicUrl);
+        return data.publicUrl;
+      } catch {
+        // File doesn't exist at this url, try next
+      }
+    }
   }
+  return null;
+}
 
-  // Get public URL
-  const { publicURL, error: urlError } = supabase.storage
-    .from('medicine-images')
-    .getPublicUrl(fileName);
-
-  if (urlError) {
-    throw urlError;
-  }
-
-  return publicURL;
-};
-
-// Main Controller
 exports.analyzeImage = async (req, res) => {
   let imagePath;
 
@@ -77,7 +68,7 @@ exports.analyzeImage = async (req, res) => {
 
     imagePath = req.file.path;
 
-    // Step 1: OCR
+    // Step 1: OCR try
     let ocrResult;
     try {
       ocrResult = await ocrFromFile(imagePath);
@@ -90,33 +81,55 @@ exports.analyzeImage = async (req, res) => {
       throw new Error(ocrResult.ErrorMessage?.join(', ') || 'OCR failed');
     }
 
-    const extractedText = ocrResult.ParsedResults[0]?.ParsedText?.toLowerCase() || '';
-    const cleanText = extractedText.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
-    console.log('📝 Extracted Text:', cleanText);
+    let extractedText = ocrResult.ParsedResults[0]?.ParsedText || '';
+    extractedText = extractedText.toLowerCase().replace(/[\n\r]+/g, ' ').replace(/[^\w\s]/g, ' ').trim();
 
-    // Step 2: Upload image to Supabase Storage
-    const imagePublicUrl = await uploadToSupabaseStorage(imagePath, req.file.originalname);
-    console.log('📤 Uploaded image URL:', imagePublicUrl);
+    console.log('📝 Extracted Text:', extractedText);
 
-    // Step 3: Delete local temp file
+    if (!extractedText) {
+      return res.status(404).json({ success: false, message: 'No text detected' });
+    }
+
+    // Step 2: Tokenize text and try to find any medicine image by token
+    const tokens = extractedText.split(/\s+/);
+
+    let foundImageUrl = null;
+    let matchedToken = null;
+
+    for (const token of tokens) {
+      if (token.length < 3) continue; // ignore too short tokens
+
+      const url = await getMedicineImageUrl(token);
+      if (url) {
+        foundImageUrl = url;
+        matchedToken = token;
+        break;
+      }
+    }
+
+    // Step 3: Delete temp image
     if (imagePath && fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
 
-    // Step 4: Respond with OCR text and uploaded image URL
-    return res.json({
-      success: true,
-      detectedText: cleanText,
-      uploadedImageUrl: imagePublicUrl,
-    });
+    if (foundImageUrl) {
+      return res.json({
+        success: true,
+        detectedWord: matchedToken,
+        medicineImageUrl: foundImageUrl,
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: 'No matching medicine image found for detected text',
+      });
+    }
 
   } catch (error) {
     console.error('Controller Error:', error);
-
     if (imagePath && fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
-
     return res.status(500).json({
       success: false,
       error: 'Processing failed',
