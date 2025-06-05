@@ -5,7 +5,7 @@ const app = express();
 
 // CORS setup
 app.use(cors({
-  origin: '*', // Allow all origins (can be changed to specific domain)
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
@@ -13,7 +13,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// 🔧 Allow all OPTIONS preflight requests to respond with 200
+// Preflight OPTIONS requests
 app.options('*', (req, res) => {
   res.sendStatus(200);
 });
