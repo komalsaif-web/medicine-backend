@@ -3,19 +3,24 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// Middleware
+// CORS setup
 app.use(cors({
-  origin: '*', // Allow all origins (change to specific domain in production if needed)
+  origin: '*', // Allow all origins (can be changed to specific domain)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false // set true only if you need cookies/auth headers (not needed here)
+  credentials: false
 }));
 
 app.use(express.json());
 
-// Serve static files
+// 🔧 Allow all OPTIONS preflight requests to respond with 200
+app.options('*', (req, res) => {
+  res.sendStatus(200);
+});
+
+// Static file serving
 app.use('/images-db', express.static(path.join(__dirname, 'images-db')));
-app.use(express.static(path.join(__dirname, 'public'))); // favicon, etc.
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 const imageRoutes = require('./routes/imageRoutes');
