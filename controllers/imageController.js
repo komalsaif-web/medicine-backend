@@ -1,13 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const connection = require('../config/db');
-const util = require('util');
 const axios = require('axios');
-const stringSimilarity = require('string-similarity');
-const Tesseract = require('tesseract.js');
 const FormData = require('form-data');
+const Tesseract = require('tesseract.js');
+const { createClient } = require('@supabase/supabase-js');
 
-const query = util.promisify(connection.query).bind(connection);
+const supabaseUrl = 'https://kzhbzvkfpjftklzcydze.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aGJ6dmtmcGpmdGtsemN5ZHplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTAzODM0MiwiZXhwIjoyMDY0NjE0MzQyfQ.2BkpY_vf1B6KiJ8X1ykQZVaS6qsdHjjHuB0NuRCy5d4';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // OCR using OCR.Space
 const ocrFromFile = async (filePath) => {
@@ -36,20 +37,47 @@ const ocrWithTesseract = async (filePath) => {
   return { ParsedResults: [{ ParsedText: text }], IsErroredOnProcessing: false };
 };
 
+// Supabase Storage upload function
+const uploadToSupabaseStorage = async (filePath, originalName) => {
+  const fileBuffer = fs.readFileSync(filePath);
+  const fileName = `uploads/${Date.now()}_${originalName}`; // folder + unique filename
+
+  const { data, error } = await supabase.storage
+    .from('medicine-images') // Your bucket name in Supabase Storage
+    .upload(fileName, fileBuffer, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: 'image/jpeg', // better to detect mimetype dynamically if possible
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  // Get public URL
+  const { publicURL, error: urlError } = supabase.storage
+    .from('medicine-images')
+    .getPublicUrl(fileName);
+
+  if (urlError) {
+    throw urlError;
+  }
+
+  return publicURL;
+};
+
 // Main Controller
 exports.analyzeImage = async (req, res) => {
   let imagePath;
+
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No image uploaded' });
     }
 
-    // Use the file path provided by multer
     imagePath = req.file.path;
 
-    const results = [];
-
-    // OCR
+    // Step 1: OCR
     let ocrResult;
     try {
       ocrResult = await ocrFromFile(imagePath);
@@ -66,54 +94,33 @@ exports.analyzeImage = async (req, res) => {
     const cleanText = extractedText.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
     console.log('📝 Extracted Text:', cleanText);
 
-    // [Your existing database query and matching logic remains unchanged]
+    // Step 2: Upload image to Supabase Storage
+    const imagePublicUrl = await uploadToSupabaseStorage(imagePath, req.file.originalname);
+    console.log('📤 Uploaded image URL:', imagePublicUrl);
 
-    // Cleanup uploaded image
+    // Step 3: Delete local temp file
     if (imagePath && fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
 
-    // Respond
-    if (results.length > 0) {
-      const uniqueResults = results.filter((t, i, self) =>
-        i === self.findIndex(u => u.imageUrl === t.imageUrl)
-      );
-      return res.json({
-        success: true,
-        found: true,
-        matches: uniqueResults,
-        detectedText: cleanText,
-        message: "Matching medicine found"
-      });
-    } else {
-      const allImages = imageFiles.map(file => {
-        const filePath = path.join(__dirname, '..', 'images-db', file);
-        const imageData = fs.existsSync(filePath) ? fs.readFileSync(filePath).toString('base64') : null;
-        return {
-          imageUrl: `/images/${file}`,
-          fileName: file,
-          imageData
-        };
-      });
-
-      return res.status(404).json({
-        success: false,
-        found: false,
-        message: 'No matching medicine found',
-        detectedText: cleanText,
-        availableImages: allImages
-      });
-    }
+    // Step 4: Respond with OCR text and uploaded image URL
+    return res.json({
+      success: true,
+      detectedText: cleanText,
+      uploadedImageUrl: imagePublicUrl,
+    });
 
   } catch (error) {
     console.error('Controller Error:', error);
+
     if (imagePath && fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
+
     return res.status(500).json({
       success: false,
       error: 'Processing failed',
-      details: error.message
+      details: error.message,
     });
   }
 };

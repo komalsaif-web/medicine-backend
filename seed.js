@@ -94,41 +94,48 @@ const medicines = [
     "additionalInformation": "Non-drowsy formula. Take once daily."
   }
 ];
+
 function sanitizeFilename(name) {
   return name.toLowerCase().replace(/[^a-z0-9]/gi, '').replace(/\s+/g, '');
 }
 
 async function seedMedicines() {
   try {
-    console.log('🗑️ Deleting old medicines data...');
-    await pool.query('DELETE FROM medicines');
+    console.log('💾 Inserting new medicines if they do not exist...');
 
-    console.log('💾 Inserting seed medicines with images...');
     for (const med of medicines) {
       const filename = sanitizeFilename(med.name) + '.png';
       const imagePath = path.join(__dirname, 'images-db', filename);
       const image = fs.existsSync(imagePath) ? `/images/${filename}` : null;
 
-      const sql = `INSERT INTO medicines 
-        (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation, image) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+      // Check if barcode already exists
+      const checkQuery = 'SELECT COUNT(*) FROM medicines WHERE barcode = $1';
+      const result = await pool.query(checkQuery, [med.barcode]);
 
-      const values = [
-        med.barcode,
-        med.name,
-        med.price,
-        med.fakeOrReal || 'real',
-        med.mg,
-        med.purpose,
-        med.additionalInformation,
-        image,
-      ];
+      if (parseInt(result.rows[0].count) === 0) {
+        const sql = `INSERT INTO medicines 
+          (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation, image) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
 
-      await pool.query(sql, values);
-      console.log('✅ Inserted medicine:', med.name);
+        const values = [
+          med.barcode,
+          med.name,
+          med.price,
+          med.fakeOrReal || 'real',
+          med.mg,
+          med.purpose,
+          med.additionalInformation,
+          image,
+        ];
+
+        await pool.query(sql, values);
+        console.log('✅ Inserted medicine:', med.name);
+      } else {
+        console.log('⚠️ Skipped (already exists):', med.name);
+      }
     }
 
-    console.log('🎉 All medicines seeded successfully!');
+    console.log('🎉 All seed data processed successfully!');
   } catch (err) {
     console.error('❌ Error inserting seed medicines:', err);
   } finally {

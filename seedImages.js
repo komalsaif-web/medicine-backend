@@ -6,7 +6,7 @@ const imgDir = path.join(__dirname, 'images-db');
 
 async function seedImageNames() {
   try {
-    // Create medicine_image_name table
+    // Create table if not exists
     const createTableSQL = `
       CREATE TABLE IF NOT EXISTS medicine_image_name (
         id SERIAL PRIMARY KEY,
@@ -20,8 +20,13 @@ async function seedImageNames() {
     // Read image files
     const files = await fs.promises.readdir(imgDir);
 
-    // Insert image names if not already there
     for (const file of files) {
+      // Skip hidden files or directories
+      if (file.startsWith('.')) {
+        console.log('⏭ Skipping hidden/system file:', file);
+        continue;
+      }
+
       const checkQuery = 'SELECT COUNT(*) FROM medicine_image_name WHERE image_name = $1';
       const result = await pool.query(checkQuery, [file]);
 
@@ -39,7 +44,7 @@ async function seedImageNames() {
     console.error('❌ Error seeding image names:', err);
   } finally {
     await pool.end();
-    process.exit();
+    process.exit(0);
   }
 }
 
