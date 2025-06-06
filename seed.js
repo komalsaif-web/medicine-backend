@@ -1,6 +1,4 @@
-const path = require('path');
-const fs = require('fs');
-const pool = require('./config/db'); 
+const pool = require('./config/db');
 
 const medicines = [
   {
@@ -21,123 +19,109 @@ const medicines = [
     purpose: 'Anti-inflammatory',
     additionalInformation: 'Do not take on empty stomach',
   },
-   {
-    "barcode": "9310130846838",
-    "name": "Voltaren Emulgel",
-    "price": "250.00",
-    "fakeOrReal": "real",
-    "mg": "1%",
-    "purpose": "Anti-inflammatory for muscle and joint pain",
-    "additionalInformation": "Apply on affected area. Do not use on broken skin."
+  {
+    barcode: '9310130846838',
+    name: 'Voltaren Emulgel',
+    price: 250.00,
+    fakeOrReal: 'real',
+    mg: '1%',
+    purpose: 'Anti-inflammatory for muscle and joint pain',
+    additionalInformation: 'Apply on affected area. Do not use on broken skin.',
   },
   {
-    "barcode": "0745125627151",
-    "name": "Adol 500mg",
-    "price": "90.00",
-    "fakeOrReal": "real",
-    "mg": "500mg",
-    "purpose": "Pain relief and fever reducer",
-    "additionalInformation": "Do not exceed 4 doses in 24 hours."
+    barcode: '0745125627151',
+    name: 'Adol 500mg',
+    price: 90.00,
+    fakeOrReal: 'real',
+    mg: '500mg',
+    purpose: 'Pain relief and fever reducer',
+    additionalInformation: 'Do not exceed 4 doses in 24 hours.',
   },
   {
-    "barcode": "745760195039",
-    "name": "Zyrtec 10mg",
-    "price": "180.00",
-    "fakeOrReal": "real",
-    "mg": "10mg",
-    "purpose": "Allergy relief",
-    "additionalInformation": "May cause drowsiness. Take once daily."
+    barcode: '745760195039',
+    name: 'Zyrtec 10mg',
+    price: 180.00,
+    fakeOrReal: 'real',
+    mg: '10mg',
+    purpose: 'Allergy relief',
+    additionalInformation: 'May cause drowsiness. Take once daily.',
   },
   {
-    "barcode": "300450204431",
-    "name": "Nexium 40mg",
-    "price": "400.00",
-    "fakeOrReal": "real",
-    "mg": "40mg",
-    "purpose": "Treats acid reflux and stomach ulcers",
-    "additionalInformation": "Take before meals. Do not crush or chew tablet."
+    barcode: '300450204431',
+    name: 'Nexium 40mg',
+    price: 400.00,
+    fakeOrReal: 'real',
+    mg: '40mg',
+    purpose: 'Treats acid reflux and stomach ulcers',
+    additionalInformation: 'Take before meals. Do not crush or chew tablet.',
   },
   {
-    "barcode": "00186504031",
-    "name": "Lipitor 20mg",
-    "price": "350.00",
-    "fakeOrReal": "real",
-    "mg": "20mg",
-    "purpose": "Lowers cholesterol",
-    "additionalInformation": "Avoid grapefruit. Monitor liver function regularly."
+    barcode: '00186504031',
+    name: 'Lipitor 20mg',
+    price: 350.00,
+    fakeOrReal: 'real',
+    mg: '20mg',
+    purpose: 'Lowers cholesterol',
+    additionalInformation: 'Avoid grapefruit. Monitor liver function regularly.',
   },
   {
-    "barcode": "00070015623",
-    "name": "Glucophage XR 500mg",
-    "price": "220.00",
-    "fakeOrReal": "real",
-    "mg": "500mg",
-    "purpose": "Controls blood sugar in type 2 diabetes",
-    "additionalInformation": "Take with evening meal. Do not crush tablet."
+    barcode: '00070015623',
+    name: 'Glucophage XR 500mg',
+    price: 220.00,
+    fakeOrReal: 'real',
+    mg: '500mg',
+    purpose: 'Controls blood sugar in type 2 diabetes',
+    additionalInformation: 'Take with evening meal. Do not crush tablet.',
   },
   {
-    "barcode": "0087-6063",
-    "name": "Neurobion Forte",
-    "price": "150.00",
-    "fakeOrReal": "real",
-    "mg": "NA",
-    "purpose": "Vitamin B complex supplement",
-    "additionalInformation": "Take one tablet daily after food."
+    barcode: '0087-6063',
+    name: 'Neurobion Forte',
+    price: 150.00,
+    fakeOrReal: 'real',
+    mg: 'NA',
+    purpose: 'Vitamin B complex supplement',
+    additionalInformation: 'Take one tablet daily after food.',
   },
   {
-    "barcode": "014457117174",
-    "name": "Desloxan 5mg",
-    "price": "190.00",
-    "fakeOrReal": "real",
-    "mg": "5mg",
-    "purpose": "Antihistamine for allergy treatment",
-    "additionalInformation": "Non-drowsy formula. Take once daily."
+    barcode: '014457117174',
+    name: 'Desloxan 5mg',
+    price: 190.00,
+    fakeOrReal: 'real',
+    mg: '5mg',
+    purpose: 'Antihistamine for allergy treatment',
+    additionalInformation: 'Non-drowsy formula. Take once daily.',
   }
 ];
 
-function sanitizeFilename(name) {
-  return name.toLowerCase().replace(/[^a-z0-9]/gi, '').replace(/\s+/g, '');
-}
-
 async function seedMedicines() {
   try {
-    console.log('💾 Inserting new medicines if they do not exist...');
+    console.log('🗑️ Deleting existing data from medicines table...');
+    await pool.query('DELETE FROM medicines');
+
+    console.log('💾 Inserting new medicines...');
 
     for (const med of medicines) {
-      const filename = sanitizeFilename(med.name) + '.png';
-      const imagePath = path.join(__dirname, 'images-db', filename);
-      const image = fs.existsSync(imagePath) ? `/images/${filename}` : null;
+      const sql = `INSERT INTO medicines 
+        (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`;
 
-      // Check if barcode already exists
-      const checkQuery = 'SELECT COUNT(*) FROM medicines WHERE barcode = $1';
-      const result = await pool.query(checkQuery, [med.barcode]);
+      const values = [
+        med.barcode,
+        med.name,
+        med.price,
+        med.fakeOrReal || 'real',
+        med.mg,
+        med.purpose,
+        med.additionalInformation,
+      ];
 
-      if (parseInt(result.rows[0].count) === 0) {
-        const sql = `INSERT INTO medicines 
-          (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation, image) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
-
-        const values = [
-          med.barcode,
-          med.name,
-          med.price,
-          med.fakeOrReal || 'real',
-          med.mg,
-          med.purpose,
-          med.additionalInformation,
-          image,
-        ];
-
-        await pool.query(sql, values);
-        console.log('✅ Inserted medicine:', med.name);
-      } else {
-        console.log('⚠️ Skipped (already exists):', med.name);
-      }
+      await pool.query(sql, values);
+      console.log('✅ Inserted:', med.name);
     }
 
-    console.log('🎉 All seed data processed successfully!');
+    console.log('🎉 Seeding completed successfully!');
   } catch (err) {
-    console.error('❌ Error inserting seed medicines:', err);
+    console.error('❌ Error during seeding:', err);
   } finally {
     await pool.end();
     process.exit();

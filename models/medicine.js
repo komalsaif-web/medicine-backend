@@ -11,7 +11,7 @@ END
 $$;
 `;
 
-// Create medicines table with image column
+// Create medicines table without image column
 const createTableQuery = `
 CREATE TABLE IF NOT EXISTS medicines (
   id SERIAL PRIMARY KEY,
@@ -22,14 +22,13 @@ CREATE TABLE IF NOT EXISTS medicines (
   mg VARCHAR(50),
   purpose TEXT,
   additionalInformation TEXT,
-  image TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `;
 
-// Add image column if missing (in case table existed before without image)
-const addImageColumnQuery = `
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS image TEXT;
+// Drop image column if it exists
+const dropImageColumnQuery = `
+ALTER TABLE medicines DROP COLUMN IF EXISTS image;
 `;
 
 // Run table and type creation on startup
@@ -37,8 +36,8 @@ ALTER TABLE medicines ADD COLUMN IF NOT EXISTS image TEXT;
   try {
     await pool.query(createTypeQuery);
     await pool.query(createTableQuery);
-    await pool.query(addImageColumnQuery);
-    console.log('Medicines table ready with image column.');
+    await pool.query(dropImageColumnQuery);
+    console.log('Medicines table ready (image column removed if existed).');
   } catch (err) {
     console.error('Table creation error:', err);
   }
@@ -47,8 +46,8 @@ ALTER TABLE medicines ADD COLUMN IF NOT EXISTS image TEXT;
 module.exports = {
   create: (medicine, callback) => {
     const sql = `
-      INSERT INTO medicines (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation, image)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO medicines (barcode, name, price, fakeOrReal, mg, purpose, additionalInformation)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
     `;
     pool.query(sql, [
@@ -58,8 +57,7 @@ module.exports = {
       medicine.fakeOrReal || 'real',
       medicine.mg,
       medicine.purpose,
-      medicine.additionalInformation,
-      medicine.image || null
+      medicine.additionalInformation
     ], callback);
   },
 
@@ -75,8 +73,8 @@ module.exports = {
   updateByBarcode: (barcode, medicine, callback) => {
     const sql = `
       UPDATE medicines 
-      SET name = $1, price = $2, fakeOrReal = $3, mg = $4, purpose = $5, additionalInformation = $6, image = $7
-      WHERE barcode = $8
+      SET name = $1, price = $2, fakeOrReal = $3, mg = $4, purpose = $5, additionalInformation = $6
+      WHERE barcode = $7
     `;
     pool.query(sql, [
       medicine.name,
@@ -85,7 +83,6 @@ module.exports = {
       medicine.mg,
       medicine.purpose,
       medicine.additionalInformation,
-      medicine.image || null,
       barcode
     ], callback);
   },
