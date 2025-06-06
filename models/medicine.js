@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS medicines (
   name VARCHAR(255) NOT NULL,
   price NUMERIC(10, 2) NOT NULL,
   fakeOrReal fake_or_real_enum NOT NULL DEFAULT 'real',
-  mg VARCHAR(50),
+  mg VARCHAR(255),
   purpose TEXT,
   additionalInformation TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
