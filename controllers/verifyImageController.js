@@ -4,14 +4,21 @@ const axios = require('axios');
 const FormData = require('form-data');
 const Jimp = require('jimp');
 const PNG = require('pngjs').PNG;
-const pixelmatch = require('pixelmatch');
 const { createClient } = require('@supabase/supabase-js');
 
+// Initialize Supabase client
 const supabase = createClient(
   'https://kzhbzvkfpjftklzcydze.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aGJ6dmtmcGpmdGtsemN5ZHplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTAzODM0MiwiZXhwIjoyMDY0NjE0MzQyfQ.2BkpY_vf1B6KiJ8X1ykQZVaS6qsdHjjHuB0NuRCy5d4'
 );
 
+// Helper function to load pixelmatch dynamically
+const loadPixelmatch = async () => {
+  const { default: pixelmatch } = await import('pixelmatch');
+  return pixelmatch;
+};
+
+// OCR processing function
 const ocrFromFile = async (filePath) => {
   const formData = new FormData();
   formData.append('apikey', 'K84923390588957');
@@ -28,6 +35,7 @@ const ocrFromFile = async (filePath) => {
   return response.data;
 };
 
+// Fetch reference image from Supabase
 const getReferenceImage = async (name, side) => {
   const extensions = ['jpg', 'jpeg', 'png'];
   for (const ext of extensions) {
@@ -38,7 +46,9 @@ const getReferenceImage = async (name, side) => {
   return null;
 };
 
+// Compare user and reference images
 const compareImages = async (userPath, refBuffer) => {
+  const pixelmatch = await loadPixelmatch(); // Load pixelmatch dynamically
   const userImage = await Jimp.read(userPath);
   const refImage = await Jimp.read(refBuffer);
 
@@ -58,6 +68,7 @@ const compareImages = async (userPath, refBuffer) => {
   return similarity.toFixed(2);
 };
 
+// Check if image is blurry
 const isBlurry = async (imagePath) => {
   const image = await Jimp.read(imagePath);
   image.resize(300, 300).greyscale();
@@ -85,11 +96,18 @@ const isBlurry = async (imagePath) => {
   }
 
   variance = variance / total;
-  return variance < 100; // lower means more blurry
+  return variance < 100; // Lower variance indicates a blurry image
 };
 
+// Main controller function
 exports.verifyMedicineImage = async (req, res) => {
   const imagePath = req.file?.path;
+
+  // Handle favicon requests
+  if (req.path === '/favicon.ico' || req.path === '/favicon.png') {
+    return res.status(404).send('Favicon not found');
+  }
+
   try {
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
@@ -107,6 +125,7 @@ exports.verifyMedicineImage = async (req, res) => {
     const ocrResult = await ocrFromFile(imagePath);
     const extractedText = ocrResult.ParsedResults?.[0]?.ParsedText || 'N/A';
 
+    // Clean up uploaded file
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 
     return res.json({
@@ -115,10 +134,12 @@ exports.verifyMedicineImage = async (req, res) => {
       isFake,
       blurry,
       extractedText,
-      referenceImage: reference.filename
+      referenceImage: reference.filename,
     });
   } catch (err) {
+    // Clean up uploaded file on error
     if (imagePath && fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    console.error('Error in verifyMedicineImage:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
