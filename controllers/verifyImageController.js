@@ -68,23 +68,30 @@ const getReferenceImage = async (name, side) => {
   return null;
 };
 
-// Fuzzy matching to find medicine name
+// Fuzzy matching to find medicine name from bucket filenames
 const findMedicineNameFromText = async (extractedText) => {
   try {
-    const { data: allMeds, error } = await supabase
-      .from('medicines')
-      .select('name');
+    // List all files in the medicine-sideimages bucket
+    const { data: files, error } = await supabase.storage.from('medicine-sideimages').list();
 
     if (error) throw error;
+
+    // Extract medicine names from filenames (format: <medicineName>-<side>.<extension>)
+    const medicineNames = new Set();
+    for (const file of files) {
+      const match = file.name.match(/^([^-]+)-/); // Capture medicine name before the first hyphen
+      if (match) {
+        medicineNames.add(match[1].toLowerCase());
+      }
+    }
 
     const text = extractedText.toLowerCase().replace(/[^a-z0-9\s]/gi, ' ');
     const words = text.split(/\s+/).filter(w => w.length > 3);
 
     for (const word of words) {
-      for (const med of allMeds) {
-        const medName = med.name.toLowerCase();
+      for (const medName of medicineNames) {
         if (word === medName || medName.includes(word) || word.includes(medName)) {
-          return med.name;
+          return medName;
         }
       }
     }
