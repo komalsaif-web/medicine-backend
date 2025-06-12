@@ -68,41 +68,6 @@ const getReferenceImage = async (name, side) => {
   return null;
 };
 
-// Fuzzy matching to find medicine name from bucket filenames
-const findMedicineNameFromText = async (extractedText) => {
-  try {
-    // List all files in the medicine-sideimages bucket
-    const { data: files, error } = await supabase.storage.from('medicine-sideimages').list();
-
-    if (error) throw error;
-
-    // Extract medicine names from filenames (format: <medicineName>-<side>.<extension>)
-    const medicineNames = new Set();
-    for (const file of files) {
-      const match = file.name.match(/^([^-]+)-/); // Capture medicine name before the first hyphen
-      if (match) {
-        medicineNames.add(match[1].toLowerCase());
-      }
-    }
-
-    const text = extractedText.toLowerCase().replace(/[^a-z0-9\s]/gi, ' ');
-    const words = text.split(/\s+/).filter(w => w.length > 3);
-
-    for (const word of words) {
-      for (const medName of medicineNames) {
-        if (word === medName || medName.includes(word) || word.includes(medName)) {
-          return medName;
-        }
-      }
-    }
-
-    return null;
-  } catch (err) {
-    console.error('Medicine name search failed:', err.message);
-    return null;
-  }
-};
-
 // Image similarity using pixelmatch
 const compareImages = async (userPath, refBuffer) => {
   const pixelmatch = await loadPixelmatch();
@@ -158,51 +123,14 @@ exports.verifyMedicineImage = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
   const side = req.body.side?.toLowerCase();
-  let name = req.body.name?.toLowerCase();
+  const name = req.body.name?.toLowerCase();
 
-  if (!side) {
+  if (!name || !side) {
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    return res.status(400).json({ error: 'Side is required' });
-  }
-
-  if (side !== 'front' && !name) {
-    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    return res.status(400).json({ error: 'Medicine name is required for left, right, or back side' });
+    return res.status(400).json({ error: 'Both medicine name and side are required' });
   }
 
   try {
-    let rawText = await ocrFromFile(imagePath);
-    if (!rawText || rawText === 'N/A') {
-      console.log('Fallback to Tesseract for name extraction');
-      rawText = await ocrWithTesseract(imagePath);
-    }
-
-    rawText = rawText?.replace(/\r?\n/g, ' ').trim();
-    let extractedText = null;
-
-    if (side === 'front') {
-      if (rawText && rawText !== 'N/A') {
-        name = await findMedicineNameFromText(rawText);
-        extractedText = name;
-        if (!name) {
-          if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-          return res.status(404).json({
-            error: 'No matching medicine name found in extracted text',
-            extractedText: rawText
-          });
-        }
-      } else {
-        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-        return res.status(400).json({
-          error: 'Failed to extract text for medicine name',
-          extractedText: rawText || 'N/A'
-        });
-      }
-    } else {
-      // For non-front sides, try to extract medicine name anyway for UI
-      extractedText = await findMedicineNameFromText(rawText);
-    }
-
     const reference = await getReferenceImage(name, side);
     if (!reference) {
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
@@ -213,6 +141,12 @@ exports.verifyMedicineImage = async (req, res) => {
     const isFake = similarity < 70;
     const blurry = await isBlurry(imagePath);
 
+    let extractedText = await ocrFromFile(imagePath);
+    if (!extractedText || extractedText === 'N/A') {
+      console.log('Fallback to Tesseract');
+      extractedText = await ocrWithTesseract(imagePath);
+    }
+
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 
     return res.json({
@@ -220,13 +154,12 @@ exports.verifyMedicineImage = async (req, res) => {
       verdict: isFake ? 'Fake' : 'Authentic',
       blurry,
       similarity: similarity + '%',
-      filename: reference.filename,
-      extractedText: extractedText || 'N/A',
-      medicineName: name,
+      filename: reference.filename,  // Only returning filename, not full URL
+      extractedText,
     });
   } catch (err) {
     console.error('Verification error:', err);
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
