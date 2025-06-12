@@ -8,6 +8,7 @@ const PNG = require('pngjs').PNG;
 const { createClient } = require('@supabase/supabase-js');
 const Tesseract = require('tesseract.js');
 
+// Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL || 'https://kzhbzvkfpjftklzcydze.supabase.co',
   process.env.SUPABASE_KEY || 'your_supabase_service_role_key_here'
@@ -116,21 +117,64 @@ const isBlurry = async (imagePath) => {
   return variance < 100;
 };
 
-// Controller
+// ✅ Final controller logic
 exports.verifyMedicineImage = async (req, res) => {
   const imagePath = req.file?.path;
+  const side = req.body.side?.toLowerCase();
 
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+  if (!side) return res.status(400).json({ error: 'Side is required' });
 
-  const side = req.body.side?.toLowerCase();
-  const name = req.body.name?.toLowerCase();
-
-  if (!name || !side) {
-    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    return res.status(400).json({ error: 'Both medicine name and side are required' });
-  }
+  let name = req.body.name?.toLowerCase();
 
   try {
+    let extractedText = await ocrFromFile(imagePath);
+    if (!extractedText || extractedText === 'N/A') {
+      console.log('Fallback to Tesseract');
+      extractedText = await ocrWithTesseract(imagePath);
+    }
+
+    // If front side, auto-detect name from extracted text
+    if (side === 'front') {
+      const words = extractedText.split(/\s+/).map(w => w.toLowerCase());
+      const possibleNames = [...new Set(words)];
+
+      let found = false;
+      for (const medName of possibleNames) {
+        const reference = await getReferenceImage(medName, 'front');
+        if (reference) {
+          name = medName;
+          found = true;
+
+          const similarity = await compareImages(imagePath, reference.buffer);
+          const isFake = similarity < 70;
+          const blurry = await isBlurry(imagePath);
+
+          if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+
+          return res.json({
+            success: true,
+            verdict: isFake ? 'Fake' : 'Authentic',
+            blurry,
+            similarity: similarity + '%',
+            filename: reference.filename,
+            extractedText,
+          });
+        }
+      }
+
+      if (!found) {
+        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+        return res.status(404).json({ error: 'No matching reference image found for extracted text' });
+      }
+    }
+
+    // For non-front sides, name must be provided
+    if (!name) {
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      return res.status(400).json({ error: 'Medicine name is required for non-front side' });
+    }
+
     const reference = await getReferenceImage(name, side);
     if (!reference) {
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
@@ -141,12 +185,6 @@ exports.verifyMedicineImage = async (req, res) => {
     const isFake = similarity < 70;
     const blurry = await isBlurry(imagePath);
 
-    let extractedText = await ocrFromFile(imagePath);
-    if (!extractedText || extractedText === 'N/A') {
-      console.log('Fallback to Tesseract');
-      extractedText = await ocrWithTesseract(imagePath);
-    }
-
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 
     return res.json({
@@ -154,9 +192,10 @@ exports.verifyMedicineImage = async (req, res) => {
       verdict: isFake ? 'Fake' : 'Authentic',
       blurry,
       similarity: similarity + '%',
-      filename: reference.filename,  // Only returning filename, not full URL
+      filename: reference.filename,
       extractedText,
     });
+
   } catch (err) {
     console.error('Verification error:', err);
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
