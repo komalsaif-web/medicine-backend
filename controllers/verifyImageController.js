@@ -162,32 +162,36 @@ exports.verifyMedicineImage = async (req, res) => {
   }
 
   try {
-    // If side is front, try to extract name from OCR text
+    let rawText = await ocrFromFile(imagePath);
+    if (!rawText || rawText === 'N/A') {
+      console.log('Fallback to Tesseract for name extraction');
+      rawText = await ocrWithTesseract(imagePath);
+    }
+
+    rawText = rawText?.replace(/\r?\n/g, ' ').trim();
+    let extractedText = null;
+
     if (side === 'front') {
-      let extractedText = await ocrFromFile(imagePath);
-      if (!extractedText || extractedText === 'N/A') {
-        console.log('Fallback to Tesseract for name extraction');
-        extractedText = await ocrWithTesseract(imagePath);
-      }
-
-      extractedText = extractedText?.replace(/\r?\n/g, ' ').trim();
-
-      if (extractedText && extractedText !== 'N/A') {
-        name = await findMedicineNameFromText(extractedText);
+      if (rawText && rawText !== 'N/A') {
+        name = await findMedicineNameFromText(rawText);
+        extractedText = name;
         if (!name) {
           if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-          return res.status(404).json({ 
+          return res.status(404).json({
             error: 'No matching medicine name found in extracted text',
-            extractedText
+            extractedText: rawText
           });
         }
       } else {
         if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Failed to extract text for medicine name',
-          extractedText: extractedText || 'N/A'
+          extractedText: rawText || 'N/A'
         });
       }
+    } else {
+      // For non-front sides, try to extract medicine name anyway for UI
+      extractedText = await findMedicineNameFromText(rawText);
     }
 
     const reference = await getReferenceImage(name, side);
@@ -200,14 +204,6 @@ exports.verifyMedicineImage = async (req, res) => {
     const isFake = similarity < 70;
     const blurry = await isBlurry(imagePath);
 
-    let extractedText = await ocrFromFile(imagePath);
-    if (!extractedText || extractedText === 'N/A') {
-      console.log('Fallback to Tesseract');
-      extractedText = await ocrWithTesseract(imagePath);
-    }
-
-    extractedText = extractedText?.replace(/\r?\n/g, ' ').trim();
-
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 
     return res.json({
@@ -216,7 +212,7 @@ exports.verifyMedicineImage = async (req, res) => {
       blurry,
       similarity: similarity + '%',
       filename: reference.filename,
-      extractedText,
+      extractedText: extractedText || 'N/A',
       medicineName: name,
     });
   } catch (err) {
