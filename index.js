@@ -13,7 +13,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// ⬅️ Add this to avoid auth or route blocking on OPTIONS requests
+// Handle preflight requests
 app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
@@ -21,18 +21,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files
+// Serve static files (if any)
 app.use('/images-db', express.static(path.join(__dirname, 'images-db')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 const imageRoutes = require('./routes/imageRoutes');
 const medicineRoutes = require('./routes/medicineRoutes');
+const verifyImageRoute = require('./routes/verifyImageRoute');
 
+// API endpoints
+app.use('/api', verifyImageRoute);
 app.use('/images', imageRoutes);
 app.use('/medicines', medicineRoutes);
 
-// Root route
+// Root endpoint
 app.get('/', (req, res) => {
   res.send('Welcome to the Pharmacy Medicine API');
 });
