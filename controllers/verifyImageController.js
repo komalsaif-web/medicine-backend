@@ -2,15 +2,16 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
-const JimpImport = require('jimp'); // fix for newer jimp versions
+const JimpImport = require('jimp'); // Fix for newer Jimp versions
 const Jimp = JimpImport.default || JimpImport;
 const PNG = require('pngjs').PNG;
 const { createClient } = require('@supabase/supabase-js');
+const Tesseract = require('tesseract.js');
 
 // Initialize Supabase client
 const supabase = createClient(
-  'https://kzhbzvkfpjftklzcydze.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aGJ6dmtmcGpmdGtsemN5ZHplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTAzODM0MiwiZXhwIjoyMDY0NjE0MzQyfQ.2BkpY_vf1B6KiJ8X1ykQZVaS6qsdHjjHuB0NuRCy5d4'
+  process.env.SUPABASE_URL || 'https://kzhbzvkfpjftklzcydze.supabase.co',
+  process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aGJ6dmtmcGpmdGtsemN5ZHplIiwicm9sZSI6InNlcnZpY6Vfcm9sZSIsImlhdCI6MTc0OTAzODM0MiwiZXhwIjoyMDY0NjE0MzQyfQ.2BkpY_vf1B6KiJ8X1ykQZVaS6qsdHjjHuB0NuRCy5d4'
 );
 
 // Load pixelmatch dynamically
@@ -19,21 +20,39 @@ const loadPixelmatch = async () => {
   return pixelmatch;
 };
 
-// OCR processing
+// Primary OCR using ocr.space
 const ocrFromFile = async (filePath) => {
-  const formData = new FormData();
-  formData.append('apikey', 'K84923390588957');
-  formData.append('language', 'eng');
-  formData.append('isOverlayRequired', 'false');
-  formData.append('file', fs.createReadStream(filePath));
+  try {
+    const formData = new FormData();
+    formData.append('apikey', 'K84923390588957');
+    formData.append('language', 'eng');
+    formData.append('isOverlayRequired', 'false');
+    formData.append('file', fs.createReadStream(filePath));
 
-  const response = await axios.post('https://api.ocr.space/parse/image', formData, {
-    headers: formData.getHeaders(),
-    maxContentLength: Infinity,
-    maxBodyLength: Infinity,
-  });
+    const response = await axios.post('https://api.ocr.space/parse/image', formData, {
+      headers: formData.getHeaders(),
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
 
-  return response.data;
+    return response.data.ParsedResults?.[0]?.ParsedText || 'N/A';
+  } catch (err) {
+    console.error('ocr.space failed:', err.message);
+    return null;
+  }
+};
+
+// Fallback OCR using Tesseract.js
+const ocrWithTesseract = async (filePath) => {
+  try {
+    const { data: { text } } = await Tesseract.recognize(filePath, 'eng', {
+      logger: (m) => console.log('Tesseract:', m),
+    });
+    return text || 'N/A';
+  } catch (err) {
+    console.error('Tesseract OCR failed:', err.message);
+    return 'N/A';
+  }
 };
 
 // Download reference image from Supabase
@@ -117,24 +136,28 @@ exports.verifyMedicineImage = async (req, res) => {
     if (!name || !side) return res.status(400).json({ error: 'Medicine name and side are required' });
 
     const reference = await getReferenceImage(name, side);
-    if (!reference) throw new Error('Reference image not found in Supabase');
+    if (!reference) return res.status(404).json({ error: 'Reference image not found' });
 
     const similarity = await compareImages(imagePath, reference.buffer);
     const isFake = similarity < 70;
     const blurry = await isBlurry(imagePath);
 
-    const ocrResult = await ocrFromFile(imagePath);
-    const extractedText = ocrResult.ParsedResults?.[0]?.ParsedText || 'N/A';
+    // Try primary OCR, fall back to Tesseract
+    let extractedText = await ocrFromFile(imagePath);
+    if (extractedText === null) {
+      console.log('Falling back to Tesseract OCR');
+      extractedText = await ocrWithTesseract(imagePath);
+    }
+    console.log(`OCR Result: ${extractedText}`);
 
+    // Clean up uploaded file
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 
     return res.json({
       success: true,
-      similarity: `${similarity}%`,
-      isFake,
+      verdict: isFake ? 'Fake' : 'Authentic',
       blurry,
-      extractedText,
-      referenceImage: reference.filename,
+      referenceImageUrl: `https://kzhbzvkfpjftklzcydze.supabase.co/storage/v1/object/public/medicine-sideimages/${reference.filename}`
     });
   } catch (err) {
     if (imagePath && fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
