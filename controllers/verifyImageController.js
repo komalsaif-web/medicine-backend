@@ -165,11 +165,17 @@ exports.verifyMedicineImage = async (req, res) => {
         name = await findMedicineNameFromText(extractedText);
         if (!name) {
           if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-          return res.status(404).json({ error: 'No matching medicine name found in extracted text' });
+          return res.status(404).json({ 
+            error: 'No matching medicine name found in extracted text',
+            extractedText
+          });
         }
       } else {
         if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-        return res.status(400).json({ error: 'Failed to extract text for medicine name' });
+        return res.status(400).json({ 
+          error: 'Failed to extract text for medicine name',
+          extractedText: extractedText || 'N/A'
+        });
       }
     }
 
