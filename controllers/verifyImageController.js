@@ -68,19 +68,28 @@ const getReferenceImage = async (name, side) => {
   return null;
 };
 
-// Search medicine names in Supabase based on extracted text
+// Fuzzy matching to find medicine name
 const findMedicineNameFromText = async (extractedText) => {
   try {
-    const words = extractedText.toLowerCase().split(/\s+/).filter(word => word.length > 3);
-    const { data, error } = await supabase
+    const { data: allMeds, error } = await supabase
       .from('medicines')
-      .select('name')
-      .in('name', words);
+      .select('name');
 
     if (error) throw error;
-    return data?.[0]?.name || null;
+
+    const text = extractedText.toLowerCase().replace(/[^a-z0-9\s]/gi, ' ');
+    const words = text.split(/\s+/).filter(w => w.length > 3);
+
+    for (const med of allMeds) {
+      const medName = med.name.toLowerCase();
+      if (words.some(word => word.includes(medName) || medName.includes(word))) {
+        return med.name;
+      }
+    }
+
+    return null;
   } catch (err) {
-    console.error('Supabase medicine name search failed:', err.message);
+    console.error('Medicine name search failed:', err.message);
     return null;
   }
 };
@@ -161,6 +170,8 @@ exports.verifyMedicineImage = async (req, res) => {
         extractedText = await ocrWithTesseract(imagePath);
       }
 
+      extractedText = extractedText?.replace(/\r?\n/g, ' ').trim();
+
       if (extractedText && extractedText !== 'N/A') {
         name = await findMedicineNameFromText(extractedText);
         if (!name) {
@@ -194,6 +205,8 @@ exports.verifyMedicineImage = async (req, res) => {
       console.log('Fallback to Tesseract');
       extractedText = await ocrWithTesseract(imagePath);
     }
+
+    extractedText = extractedText?.replace(/\r?\n/g, ' ').trim();
 
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 
