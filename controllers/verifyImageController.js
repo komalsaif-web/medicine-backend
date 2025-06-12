@@ -2,25 +2,24 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
-const JimpImport = require('jimp'); // Fix for newer Jimp versions
+const JimpImport = require('jimp');
 const Jimp = JimpImport.default || JimpImport;
 const PNG = require('pngjs').PNG;
 const { createClient } = require('@supabase/supabase-js');
 const Tesseract = require('tesseract.js');
 
-// Initialize Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL || 'https://kzhbzvkfpjftklzcydze.supabase.co',
-  process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6aGJ6dmtmcGpmdGtsemN5ZHplIiwicm9sZSI6InNlcnZpY6Vfcm9sZSIsImlhdCI6MTc0OTAzODM0MiwiZXhwIjoyMDY0NjE0MzQyfQ.2BkpY_vf1B6KiJ8X1ykQZVaS6qsdHjjHuB0NuRCy5d4'
+  process.env.SUPABASE_KEY || 'your_supabase_service_role_key_here'
 );
 
-// Load pixelmatch dynamically
+// Dynamically load pixelmatch
 const loadPixelmatch = async () => {
   const { default: pixelmatch } = await import('pixelmatch');
   return pixelmatch;
 };
 
-// Primary OCR using ocr.space
+// OCR via OCR.Space
 const ocrFromFile = async (filePath) => {
   try {
     const formData = new FormData();
@@ -37,36 +36,39 @@ const ocrFromFile = async (filePath) => {
 
     return response.data.ParsedResults?.[0]?.ParsedText || 'N/A';
   } catch (err) {
-    console.error('ocr.space failed:', err.message);
+    console.error('OCR.Space failed:', err.message);
     return null;
   }
 };
 
-// Fallback OCR using Tesseract.js
+// OCR fallback using Tesseract
 const ocrWithTesseract = async (filePath) => {
   try {
-    const { data: { text } } = await Tesseract.recognize(filePath, 'eng', {
-      logger: (m) => console.log('Tesseract:', m),
-    });
+    const { data: { text } } = await Tesseract.recognize(filePath, 'eng');
     return text || 'N/A';
   } catch (err) {
-    console.error('Tesseract OCR failed:', err.message);
+    console.error('Tesseract failed:', err.message);
     return 'N/A';
   }
 };
 
-// Download reference image from Supabase
+// Retrieve reference image buffer from Supabase by name and side
 const getReferenceImage = async (name, side) => {
   const extensions = ['jpg', 'jpeg', 'png'];
   for (const ext of extensions) {
     const filename = `${name}-${side}.${ext}`;
     const { data, error } = await supabase.storage.from('medicine-sideimages').download(filename);
-    if (data && !error) return { buffer: Buffer.from(await data.arrayBuffer()), filename };
+    if (data && !error) {
+      return {
+        buffer: Buffer.from(await data.arrayBuffer()),
+        filename
+      };
+    }
   }
   return null;
 };
 
-// Compare images using pixelmatch
+// Image similarity using pixelmatch
 const compareImages = async (userPath, refBuffer) => {
   const pixelmatch = await loadPixelmatch();
   const userImage = await Jimp.read(userPath);
@@ -83,36 +85,30 @@ const compareImages = async (userPath, refBuffer) => {
 
   const numDiffPixels = pixelmatch(userPNG.data, refPNG.data, diff.data, width, height, { threshold: 0.1 });
   const totalPixels = width * height;
-  const similarity = ((totalPixels - numDiffPixels) / totalPixels) * 100;
-
-  return similarity.toFixed(2);
+  return ((totalPixels - numDiffPixels) / totalPixels * 100).toFixed(2);
 };
 
-// Check blur by pixel variance
+// Blur detection
 const isBlurry = async (imagePath) => {
   const image = await Jimp.read(imagePath);
   image.resize(300, 300).greyscale();
 
-  let mean = 0;
-  let total = 0;
-
+  let sum = 0, total = 0;
   for (let y = 1; y < image.bitmap.height - 1; y++) {
     for (let x = 1; x < image.bitmap.width - 1; x++) {
-      const pixel = image.getPixelColor(x, y);
-      const value = Jimp.intToRGBA(pixel).r;
-      mean += value;
+      const { r } = Jimp.intToRGBA(image.getPixelColor(x, y));
+      sum += r;
       total++;
     }
   }
 
-  mean /= total;
-
+  const mean = sum / total;
   let variance = 0;
+
   for (let y = 1; y < image.bitmap.height - 1; y++) {
     for (let x = 1; x < image.bitmap.width - 1; x++) {
-      const pixel = image.getPixelColor(x, y);
-      const value = Jimp.intToRGBA(pixel).r;
-      variance += (value - mean) ** 2;
+      const { r } = Jimp.intToRGBA(image.getPixelColor(x, y));
+      variance += (r - mean) ** 2;
     }
   }
 
@@ -120,48 +116,50 @@ const isBlurry = async (imagePath) => {
   return variance < 100;
 };
 
-// Main controller
+// Controller
 exports.verifyMedicineImage = async (req, res) => {
   const imagePath = req.file?.path;
 
-  if (req.path === '/favicon.ico' || req.path === '/favicon.png') {
-    return res.status(404).send('Favicon not found');
+  if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+
+  const side = req.body.side?.toLowerCase();
+  const name = req.body.name?.toLowerCase();
+
+  if (!name || !side) {
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    return res.status(400).json({ error: 'Both medicine name and side are required' });
   }
 
   try {
-    if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
-
-    const side = req.body.side?.toLowerCase();
-    const name = req.body.name?.toLowerCase();
-    if (!name || !side) return res.status(400).json({ error: 'Medicine name and side are required' });
-
     const reference = await getReferenceImage(name, side);
-    if (!reference) return res.status(404).json({ error: 'Reference image not found' });
+    if (!reference) {
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      return res.status(404).json({ error: 'Reference image not found' });
+    }
 
     const similarity = await compareImages(imagePath, reference.buffer);
     const isFake = similarity < 70;
     const blurry = await isBlurry(imagePath);
 
-    // Try primary OCR, fall back to Tesseract
     let extractedText = await ocrFromFile(imagePath);
-    if (extractedText === null) {
-      console.log('Falling back to Tesseract OCR');
+    if (!extractedText || extractedText === 'N/A') {
+      console.log('Fallback to Tesseract');
       extractedText = await ocrWithTesseract(imagePath);
     }
-    console.log(`OCR Result: ${extractedText}`);
 
-    // Clean up uploaded file
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 
     return res.json({
       success: true,
       verdict: isFake ? 'Fake' : 'Authentic',
       blurry,
-      referenceImageUrl: `https://kzhbzvkfpjftklzcydze.supabase.co/storage/v1/object/public/medicine-sideimages/${reference.filename}`
+      similarity: similarity + '%',
+      filename: reference.filename,  // Only returning filename, not full URL
+      extractedText,
     });
   } catch (err) {
-    if (imagePath && fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    console.error('Error in verifyMedicineImage:', err);
+    console.error('Verification error:', err);
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
