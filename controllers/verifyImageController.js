@@ -80,10 +80,12 @@ const findMedicineNameFromText = async (extractedText) => {
     const text = extractedText.toLowerCase().replace(/[^a-z0-9\s]/gi, ' ');
     const words = text.split(/\s+/).filter(w => w.length > 3);
 
-    for (const med of allMeds) {
-      const medName = med.name.toLowerCase();
-      if (words.some(word => word.includes(medName) || medName.includes(word))) {
-        return med.name;
+    for (const word of words) {
+      for (const med of allMeds) {
+        const medName = med.name.toLowerCase();
+        if (word === medName || medName.includes(word) || word.includes(medName)) {
+          return med.name;
+        }
       }
     }
 
