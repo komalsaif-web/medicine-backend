@@ -35,7 +35,7 @@ const feedbackRoute = require('./routes/feedbackRoutes');
 app.use('/api', verifyImageRoute);
 app.use('/images', imageRoutes);
 app.use('/medicines', medicineRoutes);
-app.use('/api', medicineRoutes);
+app.use('/api', feedbackRoute);
 
 // Root endpoint
 app.get('/', (req, res) => {
