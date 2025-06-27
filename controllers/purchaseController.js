@@ -1,4 +1,6 @@
 const db = require('../config/db');
+
+const db = require('../config/db');
 const supabase = require('../config/supabase');
 const path = require('path');
 const { randomUUID } = require('crypto');
