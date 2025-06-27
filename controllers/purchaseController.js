@@ -3,6 +3,7 @@ const supabase = require('../config/supabase');
 const path = require('path');
 const { randomUUID } = require('crypto');
 
+// ➕ Add new purchase
 exports.addPurchase = async (req, res) => {
   try {
     console.log('🔹 Incoming fields:', req.body);
@@ -73,5 +74,19 @@ exports.addPurchase = async (req, res) => {
       error: 'Database or upload error',
       details: error.message || error,
     });
+  }
+};
+
+// 📥 Get all purchases
+exports.getPurchases = async (req, res) => {
+  try {
+    console.log('📥 Fetching all purchases...');
+    const { rows } = await db.query(
+      `SELECT * FROM medicine_purchases ORDER BY created_at DESC`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('❌ Error fetching purchases:', error.message || error);
+    res.status(500).json({ error: 'Error fetching purchases' });
   }
 };
