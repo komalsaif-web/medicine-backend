@@ -29,11 +29,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 const imageRoutes = require('./routes/imageRoutes');
 const medicineRoutes = require('./routes/medicineRoutes');
 const verifyImageRoute = require('./routes/verifyImageRoute');
+const feedbackRoute = require('./routes/feedbackRoutes');
 
 // API endpoints
 app.use('/api', verifyImageRoute);
 app.use('/images', imageRoutes);
 app.use('/medicines', medicineRoutes);
+app.use('/api', medicineRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
