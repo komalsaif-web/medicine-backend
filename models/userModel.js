@@ -13,29 +13,12 @@ const findUserByEmail = async (email) => {
   return result.rows[0];
 };
 
-const updateResetToken = async (id, token, expiresAt) => {
-  await db.query(
-    'UPDATE users SET reset_token = $1, reset_token_expire = $2 WHERE id = $3',
-    [token, expiresAt, id]
-  );
-};
-
-const findUserByResetToken = async (token) => {
-  const result = await db.query('SELECT * FROM users WHERE reset_token = $1', [token]);
-  return result.rows[0];
-};
-
-const updateUserPassword = async (id, newPassword) => {
-  await db.query(
-    'UPDATE users SET password = $1, reset_token = NULL, reset_token_expire = NULL WHERE id = $2',
-    [newPassword, id]
-  );
+const updateUserPassword = async (id, hashedPassword) => {
+  await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, id]);
 };
 
 module.exports = {
   createUser,
   findUserByEmail,
-  updateResetToken,
-  findUserByResetToken,
   updateUserPassword
 };
