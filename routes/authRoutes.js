@@ -10,6 +10,6 @@ const {
 router.post('/signup', signup);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword); // no :token now
+router.post('/reset-password', resetPassword); 
 
 module.exports = router;

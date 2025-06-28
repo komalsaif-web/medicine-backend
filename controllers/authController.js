@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const {
   createUser,
   findUserByEmail,
+  findUserByPhone,
   updateUserPassword
 } = require('../models/userModel');
 
@@ -38,15 +39,19 @@ const signup = async (req, res) => {
   });
 };
 
-// ✅ LOGIN
+// ✅ LOGIN (Email or Phone)
 const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { loginId, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and Password are required' });
+  if (!loginId || !password) {
+    return res.status(400).json({ message: 'Email/Phone and Password are required' });
   }
 
-  const user = await findUserByEmail(email);
+  // Determine if loginId is email or phone
+  const user = loginId.includes('@')
+    ? await findUserByEmail(loginId)
+    : await findUserByPhone(loginId);
+
   if (!user) {
     return res.status(404).json({ message: 'User not found' });
   }
@@ -72,7 +77,7 @@ const login = async (req, res) => {
   });
 };
 
-// ✅ FORGOT PASSWORD (no token sending anymore)
+// ✅ FORGOT PASSWORD
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -81,11 +86,11 @@ const forgotPassword = async (req, res) => {
   const user = await findUserByEmail(email);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  // For now, just respond success (no email sent)
+  // In this version, just allow frontend to move to reset screen
   res.status(200).json({ message: 'You can now reset your password' });
 };
 
-// ✅ RESET PASSWORD (using email only)
+// ✅ RESET PASSWORD
 const resetPassword = async (req, res) => {
   const { email, password } = req.body;
 

@@ -13,12 +13,18 @@ const findUserByEmail = async (email) => {
   return result.rows[0];
 };
 
-const updateUserPassword = async (id, hashedPassword) => {
-  await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, id]);
+const findUserByPhone = async (phone) => {
+  const result = await db.query('SELECT * FROM users WHERE phone = $1', [phone]);
+  return result.rows[0];
+};
+
+const updateUserPassword = async (id, newPassword) => {
+  await db.query('UPDATE users SET password = $1 WHERE id = $2', [newPassword, id]);
 };
 
 module.exports = {
   createUser,
   findUserByEmail,
-  updateUserPassword
+  findUserByPhone,
+  updateUserPassword,
 };
