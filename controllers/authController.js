@@ -18,10 +18,9 @@ const signup = async (req, res) => {
 
   const user = await createUser(email, phone, hashedPassword);
 
-  // 🔐 Token without expiry
   const token = jwt.sign(
     { id: user.id, email: user.email },
-    process.env.JWT_SECRET // 👈 no expiresIn here
+    process.env.JWT_SECRET // ❌ No expiry (token never expires)
   );
 
   res.status(201).json({
