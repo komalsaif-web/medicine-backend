@@ -1,11 +1,33 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const {
   createUser,
   findUserByEmail,
   findUserByPhone,
-  updateUserPassword
+  updateUserPassword,
+  updateUserOtp,
+  verifyOtp,
+  markUserVerified
 } = require('../models/userModel');
+
+// Send OTP via email
+const sendOtpEmail = async (email, otp) => {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Your OTP Code',
+    text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
+  });
+};
 
 // ✅ SIGNUP
 const signup = async (req, res) => {
@@ -23,20 +45,39 @@ const signup = async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, 10);
   const user = await createUser(email, phone, hashedPassword);
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email },
-    process.env.JWT_SECRET
-  );
+  // Generate and send OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  await updateUserOtp(user.id, otp, expire);
+  await sendOtpEmail(email, otp);
 
   res.status(201).json({
-    message: 'Signup successful',
+    message: 'Signup successful. OTP sent to your email. Please verify.',
     user: {
       id: user.id,
       email: user.email,
       phone: user.phone,
-    },
-    token,
+    }
   });
+};
+
+// ✅ VERIFY OTP
+const verifyOtpCode = async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.status(400).json({ message: 'Email and OTP are required' });
+  }
+
+  const user = await verifyOtp(email, otp);
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid or expired OTP' });
+  }
+
+  await markUserVerified(user.id);
+
+  res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
 };
 
 // ✅ LOGIN (Email or Phone)
@@ -47,13 +88,16 @@ const login = async (req, res) => {
     return res.status(400).json({ message: 'Email/Phone and Password are required' });
   }
 
-  // Determine if loginId is email or phone
   const user = loginId.includes('@')
     ? await findUserByEmail(loginId)
     : await findUserByPhone(loginId);
 
   if (!user) {
     return res.status(404).json({ message: 'User not found' });
+  }
+
+  if (!user.is_verified) {
+    return res.status(403).json({ message: 'Please verify your email before login' });
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
@@ -86,7 +130,6 @@ const forgotPassword = async (req, res) => {
   const user = await findUserByEmail(email);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  // In this version, just allow frontend to move to reset screen
   res.status(200).json({ message: 'You can now reset your password' });
 };
 
@@ -109,6 +152,7 @@ const resetPassword = async (req, res) => {
 
 module.exports = {
   signup,
+  verifyOtpCode,
   login,
   forgotPassword,
   resetPassword,
