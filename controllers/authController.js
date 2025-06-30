@@ -116,16 +116,18 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // 👇 Token is created but NOT returned to frontend
     const token = jwt.sign(
-      { id: user.id }, // ✅ Only include ID in token
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' } // ✅ Recommended to set an expiry
+      { id: user.id }, // minimal payload
+      process.env.JWT_SECRET // secret key
+      // No expiration time added
     );
 
+    // ✅ Return only message (no token, no expiration)
     res.status(200).json({
-      message: 'Login successful',
-      token
+      message: 'Login successful'
     });
+
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Login failed', error: error.message });
