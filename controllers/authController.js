@@ -117,24 +117,21 @@ const login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET
+      { id: user.id }, // ✅ Only include ID in token
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' } // ✅ Recommended to set an expiry
     );
 
     res.status(200).json({
       message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-      },
-      token,
+      token
     });
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Login failed', error: error.message });
   }
 };
+
 
 // ✅ FORGOT PASSWORD
 const forgotPassword = async (req, res) => {
