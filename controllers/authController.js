@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const CryptoJS = require('crypto-js');
 
 const {
   createUser,
@@ -89,8 +90,7 @@ const verifyOtpCode = async (req, res) => {
     res.status(500).json({ message: 'OTP verification failed', error: error.message });
   }
 };
-
-// ✅ LOGIN
+// LOGIN FUNCTION
 const login = async (req, res) => {
   try {
     const { loginId, password } = req.body;
@@ -116,16 +116,20 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // 👇 Token is created but NOT returned to frontend
+    // 👉 Generate JWT
     const token = jwt.sign(
-      { id: user.id }, // minimal payload
-      process.env.JWT_SECRET // secret key
-      // No expiration time added
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
     );
 
-    // ✅ Return only message (no token, no expiration)
+    // 👉 Encrypt JWT token using AES
+    const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
+
+    // ✅ Return encrypted token
     res.status(200).json({
-      message: 'Login successful'
+      message: 'Login successful',
+      token: encryptedToken
     });
 
   } catch (error) {
@@ -133,7 +137,6 @@ const login = async (req, res) => {
     res.status(500).json({ message: 'Login failed', error: error.message });
   }
 };
-
 
 // ✅ FORGOT PASSWORD
 const forgotPassword = async (req, res) => {
