@@ -35,18 +35,16 @@ const updateUserPassword = async (userId, hashedPassword) => {
   );
 };
 
-// ✅ Update OTP and expiration
+// ✅ Update OTP and expiration (timestamp based)
 const updateUserOtp = async (userId, otp, expireMs) => {
-  // Convert milliseconds to Date object → PostgreSQL will handle it as timestamp
-  const expire = new Date(expireMs);
-
+  const expire = new Date(expireMs); // JS Date object → PostgreSQL will treat as timestamp
   await pool.query(
     'UPDATE users SET otp = $1, otp_expire = $2 WHERE id = $3',
     [otp, expire, userId]
   );
 };
 
-// ✅ Verify OTP and check if not expired
+// ✅ Verify OTP and check expiry
 const verifyOtp = async (email, otp) => {
   const result = await pool.query(
     'SELECT * FROM users WHERE email = $1 AND otp = $2 AND otp_expire > NOW()',
