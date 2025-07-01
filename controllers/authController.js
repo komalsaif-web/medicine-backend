@@ -122,11 +122,16 @@ const login = async (req, res) => {
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
 
-    res.status(200).json({
-      message: 'Login successful',
-      token: encryptedToken,
-      id: user.id // ✅ Now included
-    });
+   res.status(200).json({
+  message: 'Login successful',
+  token: encryptedToken,
+  id: user.id,
+  user: {
+    email: user.email,
+    phone: user.phone
+  }
+});
+
 
   } catch (error) {
     console.error('Login Error:', error);
