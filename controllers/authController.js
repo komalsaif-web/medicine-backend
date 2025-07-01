@@ -11,7 +11,8 @@ const {
   updateUserOtp,
   verifyOtp,
   markUserVerified,
-  updateUserFields
+  updateUserFields,
+  getUserById
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
