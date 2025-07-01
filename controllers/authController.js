@@ -207,6 +207,24 @@ const updateUserInfo = async (req, res) => {
     res.status(500).json({ message: 'Update failed', error: error.message });
   }
 };
+// ✅ GET USER BY ID
+const getUserDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) return res.status(400).json({ message: 'User ID is required' });
+
+    const user = await getUserById(userId);
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error('Get User Error:', error);
+    res.status(500).json({ message: 'Failed to fetch user', error: error.message });
+  }
+};
+
 
 module.exports = {
   signup,
@@ -214,5 +232,6 @@ module.exports = {
   login,
   forgotPassword,
   resetPassword,
-  updateUserInfo
+  updateUserInfo,
+  getUserDetails
 };

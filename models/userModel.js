@@ -73,6 +73,13 @@ const updateUserFields = async (userId, fields) => {
 
   return true;
 };
+const getUserById = async (userId) => {
+  const result = await pool.query(
+    'SELECT id, email, phone, is_verified FROM users WHERE id = $1',
+    [userId]
+  );
+  return result.rows[0];
+};
 
 module.exports = {
   createUser,
@@ -83,4 +90,5 @@ module.exports = {
   verifyOtp,
   markUserVerified,
   updateUserFields,
+  getUserById
 };
