@@ -5,7 +5,8 @@ const {
   verifyOtpCode,
   login,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  updateUserInfo
 } = require('../controllers/authController');
 
 router.post('/signup', signup);
@@ -13,5 +14,6 @@ router.post('/verify-otp', verifyOtpCode);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.put('/update-user', updateUserInfo);
 
 module.exports = router;

@@ -61,6 +61,19 @@ const markUserVerified = async (userId) => {
   );
 };
 
+const updateUserFields = async (userId, fields) => {
+  const keys = Object.keys(fields);
+  if (keys.length === 0) return false;
+
+  const updates = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+  const values = Object.values(fields);
+
+  const query = `UPDATE users SET ${updates} WHERE id = $${keys.length + 1}`;
+  await pool.query(query, [...values, userId]);
+
+  return true;
+};
+
 module.exports = {
   createUser,
   findUserByEmail,
@@ -69,4 +82,5 @@ module.exports = {
   updateUserOtp,
   verifyOtp,
   markUserVerified,
+  updateUserFields,
 };

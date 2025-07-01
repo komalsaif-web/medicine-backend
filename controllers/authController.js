@@ -10,7 +10,8 @@ const {
   updateUserPassword,
   updateUserOtp,
   verifyOtp,
-  markUserVerified
+  markUserVerified,
+  updateUserFields
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
@@ -176,10 +177,42 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// ✅ UPDATE USER INFO (email, phone, password)
+const updateUserInfo = async (req, res) => {
+  try {
+    const { email, phone, password, userId } = req.body;
+
+    if (!userId) return res.status(400).json({ message: 'User ID is required' });
+    if (!email && !phone && !password) {
+      return res.status(400).json({ message: 'At least one field is required to update' });
+    }
+
+    const updates = {};
+    if (email) updates.email = email;
+    if (phone) updates.phone = phone;
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updates.password = hashedPassword;
+    }
+
+    const updated = await updateUserFields(userId, updates);
+
+    if (updated) {
+      res.status(200).json({ message: 'User updated successfully' });
+    } else {
+      res.status(500).json({ message: 'Update failed' });
+    }
+  } catch (error) {
+    console.error('Update Error:', error);
+    res.status(500).json({ message: 'Update failed', error: error.message });
+  }
+};
+
 module.exports = {
   signup,
   verifyOtpCode,
   login,
   forgotPassword,
   resetPassword,
+  updateUserInfo
 };
