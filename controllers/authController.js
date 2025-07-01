@@ -119,20 +119,13 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // 👉 Generate JWT
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // 👉 Encrypt JWT token using AES
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
 
-    // ✅ Return encrypted token
     res.status(200).json({
       message: 'Login successful',
-      token: encryptedToken
+      token: encryptedToken,
+      id: user.id // ✅ Now included
     });
 
   } catch (error) {
@@ -140,6 +133,7 @@ const login = async (req, res) => {
     res.status(500).json({ message: 'Login failed', error: error.message });
   }
 };
+
 
 // ✅ FORGOT PASSWORD
 const forgotPassword = async (req, res) => {
