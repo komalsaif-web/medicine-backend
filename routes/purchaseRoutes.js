@@ -3,13 +3,16 @@ const router = express.Router();
 const purchaseController = require('../controllers/purchaseController');
 const multer = require('multer');
 
-// Store file in memory (for storing into DB as buffer)
+// Store file in memory
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ➕ Route to add purchase with image (stored in DB)
-router.post('/add', upload.single('receipt_image'), purchaseController.addPurchase);
+// ➕ Add purchase with image
+router.post('/purchase/add', upload.single('receipt_image'), purchaseController.addPurchase);
 
-// 📦 Route to fetch all purchases (with image_base64)
-router.get('/all', purchaseController.getPurchases);
+// 📥 All purchases
+router.get('/purchase/all', purchaseController.getPurchases);
+
+// 📥 Purchases for a specific user
+router.get('/purchase/:userId', purchaseController.getPurchasesByUser);
 
 module.exports = router;
