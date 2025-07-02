@@ -60,7 +60,6 @@ const markUserVerified = async (userId) => {
     [userId]
   );
 };
-// models/userModel.js
 const updateUserFields = async (userId, updates) => {
   const keys = Object.keys(updates);
   if (keys.length === 0) return false;
@@ -69,7 +68,7 @@ const updateUserFields = async (userId, updates) => {
   const values = [...Object.values(updates), userId];
 
   const query = `UPDATE users SET ${setClause} WHERE id = $${keys.length + 1}`;
-  const result = await db.query(query, values);
+  const result = await pool.query(query, values); 
 
   return result.rowCount > 0;
 };
