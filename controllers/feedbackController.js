@@ -1,12 +1,10 @@
 const db = require('../config/db');
 
-// POST Feedback for logged-in user
+// POST Feedback (userId from body)
 exports.submitFeedback = async (req, res) => {
-  const { feeling, thoughts, email } = req.body;
-  const userId = req.user?.id;
+  const { userId, feeling, thoughts, email } = req.body;
 
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
+  if (!userId) return res.status(400).json({ error: 'User ID is required' });
   if (!feeling || !thoughts) {
     return res.status(400).json({ error: 'Feeling and thoughts are required' });
   }
@@ -23,11 +21,11 @@ exports.submitFeedback = async (req, res) => {
   }
 };
 
-// GET Feedback for logged-in user
+// ✅ GET Feedback by user ID from URL param (e.g. /feedback/5)
 exports.getFeedback = async (req, res) => {
-  const userId = req.user?.id;
+  const userId = req.params.id;
 
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  if (!userId) return res.status(400).json({ error: 'User ID is required' });
 
   try {
     const result = await db.query(
