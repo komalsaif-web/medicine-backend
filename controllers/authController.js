@@ -182,16 +182,18 @@ const resetPassword = async (req, res) => {
 // ✅ UPDATE USER INFO (email, phone, password)
 const updateUserInfo = async (req, res) => {
   try {
-    const { email, phone, password, userId } = req.body;
+    const userId = req.params.id;
+    const { email, phone, password, name } = req.body; // name added
 
     if (!userId) return res.status(400).json({ message: 'User ID is required' });
-    if (!email && !phone && !password) {
+    if (!email && !phone && !password && !name) {
       return res.status(400).json({ message: 'At least one field is required to update' });
     }
 
     const updates = {};
     if (email) updates.email = email;
     if (phone) updates.phone = phone;
+    if (name) updates.name = name;
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       updates.password = hashedPassword;
@@ -209,6 +211,7 @@ const updateUserInfo = async (req, res) => {
     res.status(500).json({ message: 'Update failed', error: error.message });
   }
 };
+
 // ✅ GET USER BY ID
 const getUserDetails = async (req, res) => {
   try {

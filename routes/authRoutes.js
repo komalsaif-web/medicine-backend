@@ -15,7 +15,7 @@ router.post('/verify-otp', verifyOtpCode);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
-router.put('/update-user', updateUserInfo);
+router.put('/update-user/:id', updateUserInfo);
 router.get('/user/:userId', getUserDetails);
 
 module.exports = router;

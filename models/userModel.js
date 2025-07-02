@@ -60,18 +60,18 @@ const markUserVerified = async (userId) => {
     [userId]
   );
 };
-
-const updateUserFields = async (userId, fields) => {
-  const keys = Object.keys(fields);
+// models/userModel.js
+const updateUserFields = async (userId, updates) => {
+  const keys = Object.keys(updates);
   if (keys.length === 0) return false;
 
-  const updates = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
-  const values = Object.values(fields);
+  const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+  const values = [...Object.values(updates), userId];
 
-  const query = `UPDATE users SET ${updates} WHERE id = $${keys.length + 1}`;
-  await pool.query(query, [...values, userId]);
+  const query = `UPDATE users SET ${setClause} WHERE id = $${keys.length + 1}`;
+  const result = await db.query(query, values);
 
-  return true;
+  return result.rowCount > 0;
 };
 const getUserById = async (userId) => {
   const result = await pool.query(
