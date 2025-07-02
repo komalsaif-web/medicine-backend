@@ -9,7 +9,6 @@ const createUser = async (name, email, phone, hashedPassword) => {
   return result.rows[0];
 };
 
-
 // ✅ Find user by email
 const findUserByEmail = async (email) => {
   const result = await pool.query(

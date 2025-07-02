@@ -32,14 +32,11 @@ const sendOtpEmail = async (email, otp) => {
     text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
   });
 };
-
-
-// ✅ SIGNUP
 const signup = async (req, res) => {
   try {
-    const { email, phone, password } = req.body;
+    const { name, email, phone, password } = req.body; // ✅ include `name`
 
-    if (!email || !phone || !password) {
+    if (!name || !email || !phone || !password) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
@@ -49,7 +46,7 @@ const signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await createUser(email, phone, hashedPassword);
+    const user = await createUser(name, email, phone, hashedPassword); // ✅ now passes `name`
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expire = Date.now() + 10 * 60 * 1000;
