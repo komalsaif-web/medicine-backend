@@ -40,7 +40,7 @@ app.use('/api', verifyImageRoute);
 app.use('/images', imageRoutes);
 app.use('/medicines', medicineRoutes);
 app.use('/api', feedbackRoute);
-app.use('/purchase', purchaseRoute);
+app.use('/api', purchaseRoute);
 app.use('/api', authRoute);
 app.use('/api', ratingRoute);
 
