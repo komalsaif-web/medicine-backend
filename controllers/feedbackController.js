@@ -1,10 +1,9 @@
 const db = require('../config/db');
 
-// POST Feedback (userId from body)
 exports.submitFeedback = async (req, res) => {
-  const { userId, feeling, thoughts, email } = req.body;
+  const { feeling, thoughts, email, user_id } = req.body;
 
-  if (!userId) return res.status(400).json({ error: 'User ID is required' });
+  if (!user_id) return res.status(400).json({ error: 'User ID is required' });
   if (!feeling || !thoughts) {
     return res.status(400).json({ error: 'Feeling and thoughts are required' });
   }
@@ -12,7 +11,7 @@ exports.submitFeedback = async (req, res) => {
   try {
     await db.query(
       'INSERT INTO feedback (user_id, feeling, thoughts, email) VALUES ($1, $2, $3, $4)',
-      [userId, feeling, thoughts, email || null]
+      [user_id, feeling, thoughts, email || null]
     );
     res.status(201).json({ message: 'Feedback submitted successfully' });
   } catch (err) {
