@@ -73,13 +73,15 @@ const updateUserFields = async (userId, updates) => {
 
   return result.rowCount > 0;
 };
-const getUserById = async (userId) => {
-  const result = await pool.query(
-    'SELECT id, email, phone, is_verified FROM users WHERE id = $1',
-    [userId]
+
+const getUserById = async (id) => {
+  const result = await db.query(
+    'SELECT id, name, email, phone, is_verified FROM users WHERE id = $1',
+    [id]
   );
   return result.rows[0];
 };
+
 
 module.exports = {
   createUser,
