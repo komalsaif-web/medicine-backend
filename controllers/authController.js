@@ -61,6 +61,7 @@ const signup = async (req, res) => {
       message: 'Signup successful. OTP sent to your email. Please verify.',
       user: {
         id: user.id,
+        name: user.name,
         email: user.email,
         phone: user.phone,
       }
@@ -127,6 +128,7 @@ const login = async (req, res) => {
   token: encryptedToken,
   id: user.id,
   user: {
+    name: user.name,
     email: user.email,
     phone: user.phone
   }
