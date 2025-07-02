@@ -1,13 +1,14 @@
 const pool = require('../config/db');
 
 // ✅ Create a new user
-const createUser = async (email, phone, hashedPassword) => {
+const createUser = async (name, email, phone, hashedPassword) => {
   const result = await pool.query(
-    'INSERT INTO users (email, phone, password, is_verified) VALUES ($1, $2, $3, false) RETURNING *',
-    [email, phone, hashedPassword]
+    'INSERT INTO users (name, email, phone, password, is_verified) VALUES ($1, $2, $3, $4, false) RETURNING *',
+    [name, email, phone, hashedPassword]
   );
   return result.rows[0];
 };
+
 
 // ✅ Find user by email
 const findUserByEmail = async (email) => {
