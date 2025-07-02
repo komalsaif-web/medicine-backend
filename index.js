@@ -32,6 +32,7 @@ const verifyImageRoute = require('./routes/verifyImageRoute');
 const feedbackRoute = require('./routes/feedbackRoutes');
 const purchaseRoute = require('./routes/purchaseRoutes');
 const authRoute = require('./routes/authRoutes');
+const ratingRoute = require('./routes/ratingRoutes');
 
 
 // API endpoints
@@ -41,6 +42,7 @@ app.use('/medicines', medicineRoutes);
 app.use('/api', feedbackRoute);
 app.use('/purchase', purchaseRoute);
 app.use('/api', authRoute);
+app.use('/api', ratingRoute);
 
 // Root endpoint
 app.get('/', (req, res) => {
