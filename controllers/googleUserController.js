@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 
-// 🔹 Controller to save Google user to Supabase
+// 🔹 Save Google user to Supabase
 const saveGoogleUser = async (req, res) => {
   try {
     const { name, email, uid } = req.body;
@@ -13,7 +13,6 @@ const saveGoogleUser = async (req, res) => {
     const existing = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
     if (existing.rows.length === 0) {
-      // Insert new Google user into Supabase
       await pool.query(
         'INSERT INTO users (name, email, uid, is_verified) VALUES ($1, $2, $3, true)',
         [name, email, uid]
@@ -27,6 +26,25 @@ const saveGoogleUser = async (req, res) => {
   }
 };
 
+// 🔹 Get Google user by ID
+const getGoogleUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query('SELECT id, name, email, uid FROM users WHERE id = $1', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ user: result.rows[0] });
+  } catch (error) {
+    console.error('Get User by ID Error:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
-  saveGoogleUser
+  saveGoogleUser,
+  getGoogleUserById
 };
