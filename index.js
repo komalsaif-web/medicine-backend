@@ -33,6 +33,7 @@ const feedbackRoute = require('./routes/feedbackRoutes');
 const purchaseRoute = require('./routes/purchaseRoutes');
 const authRoute = require('./routes/authRoutes');
 const ratingRoute = require('./routes/ratingRoutes');
+const googleRoutes = require('./routes/googleUserRoutes')
 
 
 // API endpoints
@@ -43,6 +44,7 @@ app.use('/api', feedbackRoute);
 app.use('/api', purchaseRoute);
 app.use('/api', authRoute);
 app.use('/api', ratingRoute);
+app.use('/api', googleRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
