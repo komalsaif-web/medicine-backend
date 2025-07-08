@@ -7,7 +7,8 @@ const {
   forgotPassword,
   resetPassword,
   updateUserInfo,
-  getUserDetails
+  getUserDetails,
+  deleteUserAccount
 } = require('../controllers/authController');
 
 router.post('/signup', signup);
@@ -17,5 +18,7 @@ router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.put('/update-user/:id', updateUserInfo);
 router.get('/user/:userId', getUserDetails);
+router.delete('/delete/:id', deleteUserAccount);
 
 module.exports = router;
+ 

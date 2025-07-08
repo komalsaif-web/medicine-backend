@@ -11,40 +11,28 @@ const createUser = async (name, email, phone, hashedPassword) => {
 
 // ✅ Find user by email
 const findUserByEmail = async (email) => {
-  const result = await pool.query(
-    'SELECT * FROM users WHERE email = $1',
-    [email]
-  );
+  const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
   return result.rows[0];
 };
 
 // ✅ Find user by phone
 const findUserByPhone = async (phone) => {
-  const result = await pool.query(
-    'SELECT * FROM users WHERE phone = $1',
-    [phone]
-  );
+  const result = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
   return result.rows[0];
 };
 
 // ✅ Update user password
 const updateUserPassword = async (userId, hashedPassword) => {
-  await pool.query(
-    'UPDATE users SET password = $1 WHERE id = $2',
-    [hashedPassword, userId]
-  );
+  await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, userId]);
 };
 
-// ✅ Update OTP and expiration (timestamp based)
+// ✅ Update OTP and expiration
 const updateUserOtp = async (userId, otp, expireMs) => {
-  const expire = new Date(expireMs); // JS Date object → PostgreSQL will treat as timestamp
-  await pool.query(
-    'UPDATE users SET otp = $1, otp_expire = $2 WHERE id = $3',
-    [otp, expire, userId]
-  );
+  const expire = new Date(expireMs);
+  await pool.query('UPDATE users SET otp = $1, otp_expire = $2 WHERE id = $3', [otp, expire, userId]);
 };
 
-// ✅ Verify OTP and check expiry
+// ✅ Verify OTP
 const verifyOtp = async (email, otp) => {
   const result = await pool.query(
     'SELECT * FROM users WHERE email = $1 AND otp = $2 AND otp_expire > NOW()',
@@ -60,6 +48,8 @@ const markUserVerified = async (userId) => {
     [userId]
   );
 };
+
+// ✅ Update multiple fields
 const updateUserFields = async (userId, updates) => {
   const keys = Object.keys(updates);
   if (keys.length === 0) return false;
@@ -68,11 +58,12 @@ const updateUserFields = async (userId, updates) => {
   const values = [...Object.values(updates), userId];
 
   const query = `UPDATE users SET ${setClause} WHERE id = $${keys.length + 1}`;
-  const result = await pool.query(query, values); 
+  const result = await pool.query(query, values);
 
   return result.rowCount > 0;
 };
 
+// ✅ Get user by ID
 const getUserById = async (id) => {
   const result = await pool.query(
     'SELECT id, name, email, phone, is_verified FROM users WHERE id = $1',
@@ -81,7 +72,11 @@ const getUserById = async (id) => {
   return result.rows[0];
 };
 
-
+// ✅ Delete user by ID
+const deleteUserById = async (userId) => {
+  const result = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+  return result.rowCount > 0;
+};
 
 module.exports = {
   createUser,
@@ -92,5 +87,6 @@ module.exports = {
   verifyOtp,
   markUserVerified,
   updateUserFields,
-  getUserById
+  getUserById,
+  deleteUserById 
 };

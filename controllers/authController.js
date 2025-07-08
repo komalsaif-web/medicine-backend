@@ -12,7 +12,8 @@ const {
   verifyOtp,
   markUserVerified,
   updateUserFields,
-  getUserById
+  getUserById,
+  deleteUserById
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
@@ -227,6 +228,24 @@ const getUserDetails = async (req, res) => {
   }
 };
 
+// ✅ DELETE USER ACCOUNT
+const deleteUserAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) return res.status(400).json({ message: 'User ID is required' });
+
+    const deleted = await deleteUserById(id);
+    if (deleted) {
+      res.status(200).json({ message: 'User deleted successfully' });
+    } else {
+      res.status(404).json({ message: 'User not found or already deleted' });
+    }
+  } catch (error) {
+    console.error('Delete User Error:', error);
+    res.status(500).json({ message: 'Failed to delete user', error: error.message });
+  }
+};
 
 module.exports = {
   signup,
@@ -235,5 +254,6 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updateUserInfo,
-  getUserDetails
+  getUserDetails,
+ deleteUserAccount
 };
