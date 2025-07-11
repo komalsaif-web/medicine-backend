@@ -27,15 +27,17 @@ const sendOtpEmail = async (email, otp) => {
   });
 
   await transporter.sendMail({
-    from: `"PHARMASENZ" <${process.env.EMAIL_USER}>`, // ✅ Sender name + email
+    from: `"PHARMASENZ" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Your OTP Code',
-    text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
+    text: `Your OTP is ${otp}. It will expire in 1 minute.`, // ✅ Updated message
   });
 };
+
+// ✅ SIGNUP FUNCTION
 const signup = async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body; // ✅ include `name`
+    const { name, email, phone, password } = req.body;
 
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ message: 'All fields are required' });
@@ -47,10 +49,10 @@ const signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await createUser(name, email, phone, hashedPassword); // ✅ now passes `name`
+    const user = await createUser(name, email, phone, hashedPassword);
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expire = Date.now() + 10 * 60 * 1000;
+    const expire = Date.now() + 1 * 60 * 1000; // ✅ OTP expires in 1 minute
 
     await updateUserOtp(user.id, otp, expire);
     await sendOtpEmail(email, otp);
@@ -92,7 +94,8 @@ const verifyOtpCode = async (req, res) => {
     res.status(500).json({ message: 'OTP verification failed', error: error.message });
   }
 };
-// LOGIN FUNCTION
+
+// ✅ LOGIN FUNCTION
 const login = async (req, res) => {
   try {
     const { loginId, password } = req.body;
@@ -121,24 +124,21 @@ const login = async (req, res) => {
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
 
-   res.status(200).json({
-  message: 'Login successful',
-  token: encryptedToken,
-  id: user.id,
-  user: {
-    name: user.name,
-    email: user.email,
-    phone: user.phone
-  }
-});
-
-
+    res.status(200).json({
+      message: 'Login successful',
+      token: encryptedToken,
+      id: user.id,
+      user: {
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      }
+    });
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Login failed', error: error.message });
   }
 };
-
 
 // ✅ FORGOT PASSWORD
 const forgotPassword = async (req, res) => {
@@ -177,11 +177,11 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// ✅ UPDATE USER INFO (email, phone, password)
+// ✅ UPDATE USER INFO
 const updateUserInfo = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { email, phone, password, name } = req.body; // name added
+    const { email, phone, password, name } = req.body;
 
     if (!userId) return res.status(400).json({ message: 'User ID is required' });
     if (!email && !phone && !password && !name) {
@@ -228,7 +228,7 @@ const getUserDetails = async (req, res) => {
   }
 };
 
-// ✅ DELETE USER ACCOUNT
+// ✅ DELETE USER
 const deleteUserAccount = async (req, res) => {
   try {
     const { id } = req.params;
@@ -255,5 +255,5 @@ module.exports = {
   resetPassword,
   updateUserInfo,
   getUserDetails,
- deleteUserAccount
+  deleteUserAccount
 };
