@@ -1,32 +1,43 @@
 const pool = require('../config/db');
 
-// 🔹 Save Google user to Supabase (without UID)
-const saveGoogleUser = async (req, res) => {
+// 🔹 Login or Register Google User
+const loginGoogleUser = async (req, res) => {
   try {
     const { name, email } = req.body;
 
     if (!name || !email) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ message: 'Missing name or email' });
     }
 
-    // Check if user already exists
-    const existing = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    // 🔍 Check if user already exists
+    const existing = await pool.query('SELECT id, name, email FROM users WHERE email = $1', [email]);
 
-    if (existing.rows.length === 0) {
-      await pool.query(
-        'INSERT INTO users (name, email, is_verified) VALUES ($1, $2, true)',
-        [name, email]
-      );
+    // ✅ If exists → login
+    if (existing.rows.length > 0) {
+      return res.status(200).json({
+        message: 'Login successful',
+        user: existing.rows[0]
+      });
     }
 
-    return res.status(200).json({ message: 'User saved successfully' });
+    // 🆕 Else create new user (register)
+    const insert = await pool.query(
+      'INSERT INTO users (name, email, is_verified) VALUES ($1, $2, true) RETURNING id, name, email',
+      [name, email]
+    );
+
+    return res.status(201).json({
+      message: 'User registered and logged in successfully',
+      user: insert.rows[0]
+    });
+
   } catch (error) {
-    console.error('Google User Save Error:', error);
+    console.error('Google Login Error:', error);
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// 🔹 Get Google user by ID (without UID)
+// 🔹 Get Google User by ID
 const getGoogleUserById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -45,6 +56,6 @@ const getGoogleUserById = async (req, res) => {
 };
 
 module.exports = {
-  saveGoogleUser,
+  loginGoogleUser,
   getGoogleUserById
 };

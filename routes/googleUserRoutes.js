@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const {
-  saveGoogleUser,
+  loginGoogleUser,
   getGoogleUserById
 } = require('../controllers/googleUserController');
 
-// 🔹 POST → Save new Google user
-router.post('/google', saveGoogleUser);
+// 🔹 POST → Login/Register Google User
+router.post('/google', loginGoogleUser);
 
-// 🔹 GET → Fetch user by ID
+// 🔹 GET → Fetch Google user by ID
 router.get('/google/:id', getGoogleUserById);
 
 module.exports = router;
