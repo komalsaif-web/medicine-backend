@@ -52,7 +52,7 @@ const signup = async (req, res) => {
     const user = await createUser(name, email, phone, hashedPassword);
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expire = Date.now(); // ✅ Store as bigint timestamp in ms
+    const expire = new Date(Date.now() + 60 * 1000); // ✅ 1 minute expiry
 
     await updateUserOtp(user.id, otp, expire);
     await sendOtpEmail(email, otp);
@@ -261,7 +261,7 @@ const resendOtp = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expire = Date.now(); // ✅ Store as bigint timestamp in ms
+    const expire = new Date(Date.now() + 60 * 1000); // ✅ 1 minute expiry
 
     await updateUserOtp(user.id, otp, expire);
     await sendOtpEmail(email, otp);
