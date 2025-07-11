@@ -1,11 +1,11 @@
 const pool = require('../config/db');
 
-// 🔹 Save Google user to Supabase
+// 🔹 Save Google user to Supabase (without UID)
 const saveGoogleUser = async (req, res) => {
   try {
-    const { name, email, uid } = req.body;
+    const { name, email } = req.body;
 
-    if (!name || !email || !uid) {
+    if (!name || !email) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -14,8 +14,8 @@ const saveGoogleUser = async (req, res) => {
 
     if (existing.rows.length === 0) {
       await pool.query(
-        'INSERT INTO users (name, email, uid, is_verified) VALUES ($1, $2, $3, true)',
-        [name, email, uid]
+        'INSERT INTO users (name, email, is_verified) VALUES ($1, $2, true)',
+        [name, email]
       );
     }
 
@@ -26,12 +26,12 @@ const saveGoogleUser = async (req, res) => {
   }
 };
 
-// 🔹 Get Google user by ID
+// 🔹 Get Google user by ID (without UID)
 const getGoogleUserById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await pool.query('SELECT id, name, email, uid FROM users WHERE id = $1', [id]);
+    const result = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
