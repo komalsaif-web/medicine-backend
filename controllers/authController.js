@@ -30,7 +30,7 @@ const sendOtpEmail = async (email, otp) => {
     from: `"PHARMASENZ" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Your OTP Code',
-    text: `Your OTP is ${otp}. It will expire in 1 minute.`, // ✅ Updated message
+    text: `Your OTP is ${otp}. It will expire in 1 minute.`,
   });
 };
 
@@ -52,7 +52,7 @@ const signup = async (req, res) => {
     const user = await createUser(name, email, phone, hashedPassword);
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expire = Date.now() + 1 * 60 * 1000; // ✅ OTP expires in 1 minute
+    const expire = Date.now(); // ✅ Store as bigint timestamp in ms
 
     await updateUserOtp(user.id, otp, expire);
     await sendOtpEmail(email, otp);
@@ -261,7 +261,7 @@ const resendOtp = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expire = Date.now() + 1 * 60 * 1000; // 1 minute
+    const expire = Date.now(); // ✅ Store as bigint timestamp in ms
 
     await updateUserOtp(user.id, otp, expire);
     await sendOtpEmail(email, otp);
@@ -272,7 +272,6 @@ const resendOtp = async (req, res) => {
     res.status(500).json({ message: 'Failed to resend OTP', error: error.message });
   }
 };
-
 
 module.exports = {
   signup,
