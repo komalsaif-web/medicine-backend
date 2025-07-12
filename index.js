@@ -26,9 +26,6 @@ app.use('/images-db', express.static(path.join(__dirname, 'images-db')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
-const imageRoutes = require('./routes/imageRoutes');
-const medicineRoutes = require('./routes/medicineRoutes');
-const verifyImageRoute = require('./routes/verifyImageRoute');
 const feedbackRoute = require('./routes/feedbackRoutes');
 const purchaseRoute = require('./routes/purchaseRoutes');
 const authRoute = require('./routes/authRoutes');
@@ -37,9 +34,6 @@ const googleRoutes = require('./routes/googleUserRoutes')
 
 
 // API endpoints
-app.use('/api', verifyImageRoute);
-app.use('/images', imageRoutes);
-app.use('/medicines', medicineRoutes);
 app.use('/api', feedbackRoute);
 app.use('/api', purchaseRoute);
 app.use('/api', authRoute);
