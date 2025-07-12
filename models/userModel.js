@@ -92,11 +92,21 @@ const deleteUserById = async (userId) => {
   return result.rowCount > 0;
 };
 
+// ✅ Get full user by email
+const getUserByEmail = async (email) => {
+  const result = await pool.query(
+    'SELECT id, name, email, phone, is_verified FROM users WHERE email = $1',
+    [email]
+  );
+  return result.rows[0];
+};
+
 // ✅ Export all functions
 module.exports = {
   createUser,
   findUserByEmail,
   findUserByPhone,
+  getUserByEmail,
   updateUserPassword,
   updateUserOtp,
   verifyOtp,

@@ -13,7 +13,8 @@ const {
   markUserVerified,
   updateUserFields,
   getUserById,
-  deleteUserById
+  deleteUserById,
+  getUserByEmail,
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
@@ -271,6 +272,28 @@ const resendOtp = async (req, res) => {
     res.status(500).json({ message: 'Failed to resend OTP', error: error.message });
   }
 };
+
+// ✅ Get user by email controller
+const getUserByEmailController = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await getUserByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error('Get User by Email Error:', error);
+    res.status(500).json({ message: 'Failed to fetch user', error: error.message });
+  }
+};
 module.exports = {
   signup,
   resendOtp,
@@ -281,4 +304,5 @@ module.exports = {
   updateUserInfo,
   getUserDetails,
   deleteUserAccount,
+  getUserByEmailController
 };
