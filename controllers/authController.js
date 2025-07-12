@@ -246,9 +246,34 @@ const deleteUserAccount = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete user', error: error.message });
   }
 };
+const resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
 
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    const user = await findUserByEmail(email);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.is_verified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expire = new Date(Date.now() + 60 * 1000); // ✅ 1 minute expiry
+
+    await updateUserOtp(user.id, otp, expire);
+    await sendOtpEmail(email, otp);
+
+    res.status(200).json({ message: 'OTP resent successfully' });
+  } catch (error) {
+    console.error('Resend OTP Error:', error);
+    res.status(500).json({ message: 'Failed to resend OTP', error: error.message });
+  }
+};
 module.exports = {
   signup,
+  resendOtp,
   verifyOtpCode,
   login,
   forgotPassword,
