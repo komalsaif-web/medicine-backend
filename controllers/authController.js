@@ -14,7 +14,7 @@ const {
   updateUserFields,
   getUserById,
   deleteUserById,
-  getUserByEmail,
+  getUserByEmail
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
@@ -34,8 +34,7 @@ const sendOtpEmail = async (email, otp) => {
     text: `Your OTP is ${otp}. It will expire in 1 minute.`,
   });
 };
-
-// ✅ SIGNUP FUNCTION
+// ✅ SIGNUP FUNCTION with token
 const signup = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -53,18 +52,24 @@ const signup = async (req, res) => {
     const user = await createUser(name, email, phone, hashedPassword);
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expire = new Date(Date.now() + 60 * 1000); // ✅ 1 minute expiry
+    const expire = new Date(Date.now() + 60 * 1000); // 1 minute
 
     await updateUserOtp(user.id, otp, expire);
-    await sendOtpEmail(email, otp);
+    await sendOtpEmail(email, otp); // Separate endpoint also available
+
+    // ✅ Generate token even before verification (optional)
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
 
     res.status(201).json({
       message: 'Signup successful. OTP sent to your email. Please verify.',
+      token: encryptedToken,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone,
+        is_verified: false
       }
     });
   } catch (error) {
@@ -72,6 +77,71 @@ const signup = async (req, res) => {
     res.status(500).json({ message: 'Signup failed', error: error.message });
   }
 };
+// ✅ Independent OTP send endpoint
+const sendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    const user = await findUserByEmail(email);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.is_verified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expire = new Date(Date.now() + 60 * 1000); // 1 minute expiry
+
+    await updateUserOtp(user.id, otp, expire);
+    await sendOtpEmail(email, otp);
+
+    res.status(200).json({ message: 'OTP sent successfully' });
+  } catch (error) {
+    console.error('Send OTP Error:', error);
+    res.status(500).json({ message: 'Failed to send OTP', error: error.message });
+  }
+};
+
+
+// // ✅ SIGNUP FUNCTION
+// const signup = async (req, res) => { //token add
+//   try {
+//     const { name, email, phone, password } = req.body;
+
+//     if (!name || !email || !phone || !password) {
+//       return res.status(400).json({ message: 'All fields are required' });
+//     }
+
+//     const existingUser = await findUserByEmail(email);
+//     if (existingUser) {
+//       return res.status(409).json({ message: 'User already exists with this email' });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     const user = await createUser(name, email, phone, hashedPassword);
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     const expire = new Date(Date.now() + 60 * 1000); // ✅ 1 minute expiry
+
+//     await updateUserOtp(user.id, otp, expire);
+//     await sendOtpEmail(email, otp); // iska alag end point ho 
+
+//     res.status(201).json({
+//       message: 'Signup successful. OTP sent to your email. Please verify.',
+//       user: {
+//         id: user.id,
+//         name: user.name,
+//         email: user.email,
+//         phone: user.phone,
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Signup Error:', error);
+//     res.status(500).json({ message: 'Signup failed', error: error.message });
+//   }
+// };
 
 // ✅ VERIFY OTP
 const verifyOtpCode = async (req, res) => {
@@ -272,7 +342,6 @@ const resendOtp = async (req, res) => {
     res.status(500).json({ message: 'Failed to resend OTP', error: error.message });
   }
 };
-
 // ✅ Get user by email controller
 const getUserByEmailController = async (req, res) => {
   try {
@@ -299,6 +368,7 @@ module.exports = {
   resendOtp,
   verifyOtpCode,
   login,
+  sendOtp,
   forgotPassword,
   resetPassword,
   updateUserInfo,
