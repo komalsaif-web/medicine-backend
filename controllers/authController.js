@@ -77,7 +77,6 @@ const signup = async (req, res) => {
     res.status(500).json({ message: 'Signup failed', error: error.message });
   }
 };
-// ✅ Independent OTP send endpoint
 const sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -92,18 +91,19 @@ const sendOtp = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expire = new Date(Date.now() + 60 * 1000); // 1 minute expiry
+    const expire = new Date(Date.now() + 60 * 1000); // expires in 1 minute
 
     await updateUserOtp(user.id, otp, expire);
+    console.log(`Generated OTP for ${email}: ${otp}`);
+
     await sendOtpEmail(email, otp);
 
     res.status(200).json({ message: 'OTP sent successfully' });
   } catch (error) {
-    console.error('Send OTP Error:', error);
+    console.error('❌ Send OTP Error:', error.message);
     res.status(500).json({ message: 'Failed to send OTP', error: error.message });
   }
 };
-
 
 // // ✅ SIGNUP FUNCTION
 // const signup = async (req, res) => { //token add
