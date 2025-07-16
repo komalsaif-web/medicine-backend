@@ -35,6 +35,7 @@ const sendOtpEmail = async (email, otp) => {
   });
 };
 // ✅ SIGNUP FUNCTION with token
+
 const signup = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -51,18 +52,14 @@ const signup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await createUser(name, email, phone, hashedPassword);
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expire = new Date(Date.now() + 60 * 1000); // 1 minute
-
-    await updateUserOtp(user.id, otp, expire);
-    await sendOtpEmail(email, otp); // Separate endpoint also available
+    // ❌ Removed OTP generation and sending here
 
     // ✅ Generate token even before verification (optional)
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
 
     res.status(201).json({
-      message: 'Signup successful. OTP sent to your email. Please verify.',
+      message: 'Signup successful. Please verify your email separately.',
       token: encryptedToken,
       user: {
         id: user.id,
@@ -77,6 +74,7 @@ const signup = async (req, res) => {
     res.status(500).json({ message: 'Signup failed', error: error.message });
   }
 };
+
 const sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
