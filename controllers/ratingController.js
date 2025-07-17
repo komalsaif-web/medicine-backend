@@ -37,7 +37,8 @@ exports.getUserRating = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-// ✅ GET /rating — Get all ratings (admin use or analysis)
+
+// GET /all-rating
 exports.getAllRatings = async (req, res) => {
   try {
     const result = await db.query(
@@ -50,12 +51,12 @@ exports.getAllRatings = async (req, res) => {
   }
 };
 
+// GET /rating/average
 exports.getAverageRating = async (req, res) => {
   try {
     const result = await db.query(
       'SELECT ROUND(AVG(rating), 2) AS average_rating FROM ratings'
     );
-
     res.status(200).json({
       average_rating: result.rows[0].average_rating || 0
     });
@@ -64,4 +65,3 @@ exports.getAverageRating = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-
