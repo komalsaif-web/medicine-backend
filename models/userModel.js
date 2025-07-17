@@ -104,6 +104,9 @@ const getAllUsers = async () => {
   const result = await pool.query('SELECT id, name, email, phone, is_verified FROM users ORDER BY created_at DESC');
   return result.rows;
 };
+const deleteAllUsers = async () => {
+  return await db.query('DELETE FROM users');
+};
 
 // ✅ Export all functions
 module.exports = {
@@ -119,4 +122,5 @@ module.exports = {
   updateUserFields,
   getUserById,
   deleteUserById,
+   deleteAllUsers,
 };

@@ -49,3 +49,20 @@ exports.getAllRatings = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// ✅ GET /rating/average — Get average of all ratings
+exports.getAverageRating = async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT ROUND(AVG(rating), 2) AS average_rating FROM ratings'
+    );
+
+    res.status(200).json({
+      average_rating: result.rows[0].average_rating || 0
+    });
+  } catch (err) {
+    console.error('❌ Error fetching average rating:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+

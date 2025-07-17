@@ -15,7 +15,8 @@ const {
   getUserById,
   deleteUserById,
   getUserByEmail,
-  getAllUsers
+  getAllUsers,
+   deleteAllUsers
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
@@ -368,6 +369,18 @@ const getAllUsersController = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch users', error: error.message });
   }
 };
+
+const deleteAllUsersController = async (req, res) => {
+  try {
+    const deleted = await deleteAllUsers();
+    res.status(200).json({
+      message: `All users deleted successfully (${deleted.rowCount} records removed)`
+    });
+  } catch (error) {
+    console.error('Delete All Users Error:', error);
+    res.status(500).json({ message: 'Failed to delete all users', error: error.message });
+  }
+};
 module.exports = {
   signup,
   resendOtp,
@@ -380,5 +393,6 @@ module.exports = {
   getUserDetails,
   deleteUserAccount,
   getUserByEmailController,
-  getAllUsersController
+  getAllUsersController,
+  deleteAllUsersController
 };

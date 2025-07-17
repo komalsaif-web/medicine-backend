@@ -12,7 +12,8 @@ const {
   resendOtp,
   sendOtp,
   getUserByEmailController,
-  getAllUsersController
+  getAllUsersController,
+  deleteAllUsersController
 } = require('../controllers/authController');
 
 router.post('/signup', signup);
@@ -27,5 +28,6 @@ router.delete('/delete/:id', deleteUserAccount);
 router.post('/resend-otp', resendOtp);
 router.get('/email/:email', getUserByEmailController);
 router.get('/all-users', getAllUsersController);
+router.delete('/delete-all-users', deleteAllUsersController); 
 module.exports = router;
  
