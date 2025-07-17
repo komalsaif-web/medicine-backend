@@ -100,10 +100,15 @@ const getUserByEmail = async (email) => {
   );
   return result.rows[0];
 };
+const getAllUsers = async () => {
+  const result = await pool.query('SELECT id, name, email, phone, is_verified FROM users ORDER BY created_at DESC');
+  return result.rows;
+};
 
 // ✅ Export all functions
 module.exports = {
   createUser,
+   getAllUsers,
   findUserByEmail,
   findUserByPhone,
   getUserByEmail,

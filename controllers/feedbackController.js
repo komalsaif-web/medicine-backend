@@ -37,3 +37,17 @@ exports.getFeedback = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// ✅ GET ALL FEEDBACK (no filter)
+exports.getAllFeedback = async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT id, user_id, feeling, thoughts, email, created_at FROM feedback ORDER BY created_at DESC'
+    );
+    res.status(200).json({ feedback: result.rows });
+  } catch (err) {
+    console.error('❌ Error fetching all feedback:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+

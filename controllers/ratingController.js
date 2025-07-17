@@ -37,3 +37,15 @@ exports.getUserRating = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+// ✅ GET /rating — Get all ratings (admin use or analysis)
+exports.getAllRatings = async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT id, user_id, rating, created_at FROM ratings ORDER BY created_at DESC'
+    );
+    res.status(200).json({ ratings: result.rows });
+  } catch (err) {
+    console.error('❌ Error fetching all ratings:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

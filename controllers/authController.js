@@ -14,7 +14,8 @@ const {
   updateUserFields,
   getUserById,
   deleteUserById,
-  getUserByEmail
+  getUserByEmail,
+  getAllUsers
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
@@ -71,7 +72,6 @@ const signup = async (req, res) => {
     res.status(500).json({ message: 'Signup failed', error: error.message });
   }
 };
-
 
 const sendOtp = async (req, res) => {
   try {
@@ -359,6 +359,15 @@ const getUserByEmailController = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch user', error: error.message });
   }
 };
+const getAllUsersController = async (req, res) => {
+  try {
+    const users = await getAllUsers();
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error('Get All Users Error:', error);
+    res.status(500).json({ message: 'Failed to fetch users', error: error.message });
+  }
+};
 module.exports = {
   signup,
   resendOtp,
@@ -370,5 +379,6 @@ module.exports = {
   updateUserInfo,
   getUserDetails,
   deleteUserAccount,
-  getUserByEmailController
+  getUserByEmailController,
+  getAllUsersController
 };
