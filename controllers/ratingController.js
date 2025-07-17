@@ -50,7 +50,6 @@ exports.getAllRatings = async (req, res) => {
   }
 };
 
-// ✅ GET /rating/average — Get average of all ratings
 exports.getAverageRating = async (req, res) => {
   try {
     const result = await db.query(
