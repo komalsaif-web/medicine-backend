@@ -35,13 +35,13 @@ const sendOtpEmail = async (email, otp) => {
   });
 };
 // ✅ SIGNUP FUNCTION with token
-
 const signup = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
 
-    if (!name || !email || !phone || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
+    // ✅ Only name, email, and password are required now
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
     const existingUser = await findUserByEmail(email);
@@ -50,11 +50,8 @@ const signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await createUser(name, email, phone, hashedPassword);
+    const user = await createUser(name, email, phone || null, hashedPassword); // ✅ default to null if not provided
 
-    // ❌ Removed OTP generation and sending here
-
-    // ✅ Generate token even before verification (optional)
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
 
@@ -74,6 +71,7 @@ const signup = async (req, res) => {
     res.status(500).json({ message: 'Signup failed', error: error.message });
   }
 };
+
 
 const sendOtp = async (req, res) => {
   try {
