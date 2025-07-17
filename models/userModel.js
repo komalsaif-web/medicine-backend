@@ -105,7 +105,7 @@ const getAllUsers = async () => {
   return result.rows;
 };
 const deleteAllUsers = async () => {
-  return await db.query('DELETE FROM users');
+  return await pool.query('DELETE FROM users');
 };
 
 // ✅ Export all functions
