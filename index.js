@@ -39,7 +39,7 @@ app.use('/api', purchaseRoute);
 app.use('/api', authRoute);
 app.use('/api', ratingRoute);
 app.use('/api', googleRoutes);
-app.use('./api', medicineProduct);
+app.use('/api', medicineProduct);
 // Root endpoint
 app.get('/', (req, res) => {
   res.send('Welcome to the Pharmacy Medicine API');
