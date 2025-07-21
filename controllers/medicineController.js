@@ -5,37 +5,43 @@ const supabase = require('../config/supabaseClient');
 // Controller to create a new medicine product
 exports.createProduct = async (req, res) => {
   try {
-    // Form data mein product details aur image file expect kar rahe hain.
-    const { product_name, price, language, brand, stock, variant, category, description, specifications, is_dangerous, buyer_promotion_image, video_url, shipping_details, seller_id } = req.body;
-    const file = req.file;  // multer se file aayegi
+    const {
+      product_name, price, language, brand, stock, variant,
+      category, description, specifications, is_dangerous,
+      buyer_promotion_image, video_url, shipping_details, seller_id
+    } = req.body;
 
-    // Define a unique file path/name for Supabase Storage
+    const file = req.file;
+
+    // ✅ Upload image to Supabase Storage
     const filePath = `medicine/${Date.now()}_${file.originalname}`;
 
-    // Upload image file to Supabase Storage bucket 'medicine-images'
-    const { data, error } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('medicine-images')
       .upload(filePath, file.buffer, {
         contentType: file.mimetype,
       });
-      
-    if (error) {
-      return res.status(500).json({ error: error.message });
+
+    if (uploadError) {
+      return res.status(500).json({ error: uploadError.message });
     }
 
-    // Get public URL for the uploaded image
-    const { publicURL } = supabase.storage
+    // ✅ Get public image URL
+    const { data: urlData } = supabase.storage
       .from('medicine-images')
       .getPublicUrl(filePath);
 
-    // Insert new product into PostgreSQL database including image URL
+    const publicURL = urlData.publicUrl;
+
+    // ✅ Insert into DB
     const result = await pool.query(
       `INSERT INTO medicine_products (
         seller_id, product_name, language, brand, price, stock, variant,
         category, description, specifications, is_dangerous, image_url,
         buyer_promotion_image, video_url, shipping_details
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      RETURNING *`,
       [
         seller_id,
         product_name,
@@ -43,19 +49,20 @@ exports.createProduct = async (req, res) => {
         brand,
         price,
         stock,
-        variant,           // JSON data expected
+        variant,
         category,
         description,
-        specifications,    // JSON data expected
+        specifications,
         is_dangerous,
-        publicURL,         // URL from Supabase Storage
+        publicURL,
         buyer_promotion_image,
         video_url,
-        shipping_details   // JSON data expected
+        shipping_details
       ]
     );
 
     res.status(201).json(result.rows[0]);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
