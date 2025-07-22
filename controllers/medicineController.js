@@ -1,12 +1,10 @@
 // controllers/medicineController.js
 const pool = require('../config/db');
 const supabase = require('../config/supabaseClient');
-
-// Controller to create a new medicine product
 exports.createProduct = async (req, res) => {
   try {
     const {
-      product_name,
+      name,
       generic_name,
       brand,
       dosage,
@@ -19,8 +17,7 @@ exports.createProduct = async (req, res) => {
       batch_number,
       manufacturing_date,
       expiry_date,
-      price,
-      user_id,
+      price
     } = req.body;
 
     const file = req.file;
@@ -37,17 +34,16 @@ exports.createProduct = async (req, res) => {
       return res.status(500).json({ error: uploadError.message });
     }
 
-    // ✅ Get public image URL
+    // ✅ Get public URL
     const { data: urlData } = supabase.storage
       .from('medicine-images')
       .getPublicUrl(filePath);
-
     const image_url = urlData.publicUrl;
 
     // ✅ Insert into DB
     const result = await pool.query(
       `INSERT INTO medicine_products (
-        product_name,
+        name,
         generic_name,
         brand,
         dosage,
@@ -60,13 +56,15 @@ exports.createProduct = async (req, res) => {
         batch_number,
         manufacturing_date,
         expiry_date,
-        price,
-        user_id,
-        image_url
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-      RETURNING *`,
+        image_url,
+        price
+      ) VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15
+      ) RETURNING *`,
       [
-        product_name,
+        name,
         generic_name,
         brand,
         dosage,
@@ -79,13 +77,13 @@ exports.createProduct = async (req, res) => {
         batch_number,
         manufacturing_date,
         expiry_date,
-        price,
-        user_id,
-        image_url
+        image_url,
+        price
       ]
     );
 
     res.status(201).json(result.rows[0]);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
