@@ -1,4 +1,5 @@
-const supabase = require('../config/supabaseClient');
+// controllers/medicineController.js
+const { supabase } = require('../config/supabaseClient');
 
 // Create product
 exports.createProduct = async (req, res) => {
@@ -18,13 +19,19 @@ exports.createProduct = async (req, res) => {
       manufacturingDate,
       expiryDate,
       price,
+      user_id // 👈 Make sure this comes from the request (e.g., req.body or middleware)
     } = req.body;
 
+    // Validate required fields
+    if (!req.file) {
+      return res.status(400).json({ error: 'Image file is required' });
+    }
+
     const file = req.file;
-    const filePath = `medicine/${Date.now()}_${file.originalname}`;
+    const filePath = `medicine-images/${Date.now()}_${file.originalname}`;
 
     // Upload image to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('medicine-images')
       .upload(filePath, file.buffer, {
         contentType: file.mimetype,
@@ -34,13 +41,14 @@ exports.createProduct = async (req, res) => {
       return res.status(500).json({ error: uploadError.message });
     }
 
-    const { data: urlData } = supabase.storage
+    const {
+      data: { publicUrl }
+    } = supabase
+      .storage
       .from('medicine-images')
       .getPublicUrl(filePath);
 
-    const imageUrl = urlData.publicUrl;
-
-    // Insert into Supabase DB (PostgreSQL)
+    // Insert into DB
     const { error: insertError } = await supabase
       .from('medicine_products')
       .insert([
@@ -58,8 +66,9 @@ exports.createProduct = async (req, res) => {
           batch_number: batchNumber,
           manufacturing_date: manufacturingDate,
           expiry_date: expiryDate,
-          image_url: imageUrl,
+          image_url: publicUrl,
           price,
+          user_id // 👈 Properly passed from frontend/middleware
         }
       ]);
 
@@ -95,6 +104,7 @@ exports.getAllProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
+
     const { data, error } = await supabase
       .from('medicine_products')
       .select('*')
@@ -151,13 +161,13 @@ exports.deleteProductById = async (req, res) => {
   }
 };
 
-// Delete all products
+// Delete all products (use with caution)
 exports.deleteAllProducts = async (req, res) => {
   try {
     const { error } = await supabase
       .from('medicine_products')
       .delete()
-      .neq('id', 0); // deletes all (use with caution)
+      .neq('id', 0); // deletes all
 
     if (error) {
       return res.status(500).json({ error: error.message });
