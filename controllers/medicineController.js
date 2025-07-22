@@ -1,5 +1,5 @@
 // controllers/medicineController.js
-const pool = require('../config/mysql'); // Make sure this is a MySQL pool
+const pool = require('../config/db'); // Make sure this is a MySQL pool
 const supabase = require('../config/supabaseClient');
 
 // Create product
