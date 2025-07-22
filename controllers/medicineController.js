@@ -1,5 +1,4 @@
 const supabase = require('../config/supabaseClient');
-const supabase = require('../config/supabase');
 
 exports.createProduct = async (req, res) => {
   try {
