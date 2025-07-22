@@ -1,19 +1,28 @@
 // controllers/medicineController.js
-const pool = require('../config/db');
+const pool = require('../config/mysql'); // Make sure this is a MySQL pool
 const supabase = require('../config/supabaseClient');
 
-// Controller to create a new medicine product
+// Create product
 exports.createProduct = async (req, res) => {
   try {
     const {
-      product_name, price, language, brand, stock, variant,
-      category, description, specifications, is_dangerous,
-      buyer_promotion_image, video_url, shipping_details, seller_id
+      name,
+      genericName,
+      brand,
+      dosage,
+      category,
+      formula,
+      form,
+      packaging,
+      description,
+      manufacturer,
+      batchNumber,
+      manufacturingDate,
+      expiryDate,
+      price,
     } = req.body;
 
     const file = req.file;
-
-    // ✅ Upload image to Supabase Storage
     const filePath = `medicine/${Date.now()}_${file.originalname}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -26,115 +35,101 @@ exports.createProduct = async (req, res) => {
       return res.status(500).json({ error: uploadError.message });
     }
 
-    // ✅ Get public image URL
     const { data: urlData } = supabase.storage
       .from('medicine-images')
       .getPublicUrl(filePath);
 
-    const publicURL = urlData.publicUrl;
+    const imageUrl = urlData.publicUrl;
 
-    // ✅ Insert into DB
-    const result = await pool.query(
-      `INSERT INTO medicine_products (
-        seller_id, product_name, language, brand, price, stock, variant,
-        category, description, specifications, is_dangerous, image_url,
-        buyer_promotion_image, video_url, shipping_details
+    const sql = `
+      INSERT INTO medicine_products (
+        name, generic_name, brand, dosage, category,
+        formula, form, packaging, description, manufacturer,
+        batch_number, manufacturing_date, expiry_date,
+        image_url, price
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-      RETURNING *`,
-      [
-        seller_id,
-        product_name,
-        language,
-        brand,
-        price,
-        stock,
-        variant,
-        category,
-        description,
-        specifications,
-        is_dangerous,
-        publicURL,
-        buyer_promotion_image,
-        video_url,
-        shipping_details
-      ]
-    );
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-    res.status(201).json(result.rows[0]);
+    const values = [
+      name, genericName, brand, dosage, category,
+      formula, form, packaging, description, manufacturer,
+      batchNumber, manufacturingDate, expiryDate,
+      imageUrl, price
+    ];
 
+    await pool.execute(sql, values);
+
+    res.status(201).json({ message: 'Medicine product created successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Controller to get all medicine products
+// Get all products
 exports.getAllProducts = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM medicine_products ORDER BY created_at DESC');
-    res.json(result.rows);
+    const [rows] = await pool.query('SELECT * FROM medicine_products ORDER BY created_at DESC');
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Controller to get a product by ID
+// Get product by ID
 exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT * FROM medicine_products WHERE id = $1', [id]);
+    const [rows] = await pool.query('SELECT * FROM medicine_products WHERE id = ?', [id]);
 
-    if (result.rows.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    res.json(result.rows[0]);
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Controller to update a product by ID
+// Update product
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const fields = Object.keys(req.body);
     const values = Object.values(req.body);
 
-    // Build dynamic SET clause for UPDATE query
-    const setClause = fields.map((field, idx) => `${field} = $${idx + 1}`).join(', ');
-    const query = `UPDATE medicine_products SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *`;
-    const result = await pool.query(query, [...values, id]);
+    const setClause = fields.map(field => `${field} = ?`).join(', ');
+    const sql = `UPDATE medicine_products SET ${setClause} WHERE id = ?`;
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
+    await pool.execute(sql, [...values, id]);
 
-    res.json(result.rows[0]);
+    res.json({ message: 'Product updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Controller to delete a product by ID
+// Delete product
 exports.deleteProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM medicine_products WHERE id = $1 RETURNING *', [id]);
+    const [result] = await pool.execute('DELETE FROM medicine_products WHERE id = ?', [id]);
 
-    if (result.rows.length === 0) {
+    if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Controller to delete all products
+// Delete all products
 exports.deleteAllProducts = async (req, res) => {
   try {
-    await pool.query('DELETE FROM medicine_products');
+    await pool.execute('DELETE FROM medicine_products');
     res.json({ message: 'All products deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
