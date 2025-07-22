@@ -1,12 +1,11 @@
-// controllers/medicineController.js
-const { supabase } = require('../config/supabaseClient');
+const supabase = require('../config/supabaseClient');
+const supabase = require('../config/supabase');
 
-// Create product
 exports.createProduct = async (req, res) => {
   try {
     const {
-      name,
-      genericName,
+      product_name,
+      generic_name,
       brand,
       dosage,
       category,
@@ -15,46 +14,46 @@ exports.createProduct = async (req, res) => {
       packaging,
       description,
       manufacturer,
-      batchNumber,
-      manufacturingDate,
-      expiryDate,
+      batch_number,
+      manufacturing_date,
+      expiry_date,
       price,
-      user_id // 👈 Make sure this comes from the request (e.g., req.body or middleware)
+      user_id, // received from frontend
     } = req.body;
 
-    // Validate required fields
-    if (!req.file) {
-      return res.status(400).json({ error: 'Image file is required' });
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: 'Image is required' });
     }
 
-    const file = req.file;
-    const filePath = `medicine-images/${Date.now()}_${file.originalname}`;
-
     // Upload image to Supabase Storage
-    const { error: uploadError } = await supabase.storage
+    const fileName = `${Date.now()}_${file.originalname}`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('medicine-images')
-      .upload(filePath, file.buffer, {
+      .upload(fileName, file.buffer, {
         contentType: file.mimetype,
       });
 
     if (uploadError) {
-      return res.status(500).json({ error: uploadError.message });
+      console.error('Upload error:', uploadError);
+      return res.status(500).json({ error: 'Failed to upload image' });
     }
 
-    const {
-      data: { publicUrl }
-    } = supabase
-      .storage
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
       .from('medicine-images')
-      .getPublicUrl(filePath);
+      .getPublicUrl(fileName);
 
-    // Insert into DB
-    const { error: insertError } = await supabase
+    const imageUrl = publicUrlData.publicUrl;
+
+    // Insert into database
+    const { data: insertData, error: insertError } = await supabase
       .from('medicine_products')
       .insert([
         {
-          name,
-          generic_name: genericName,
+          product_name,
+          generic_name,
           brand,
           dosage,
           category,
@@ -63,22 +62,28 @@ exports.createProduct = async (req, res) => {
           packaging,
           description,
           manufacturer,
-          batch_number: batchNumber,
-          manufacturing_date: manufacturingDate,
-          expiry_date: expiryDate,
-          image_url: publicUrl,
+          batch_number,
+          manufacturing_date,
+          expiry_date,
           price,
-          user_id // 👈 Properly passed from frontend/middleware
-        }
-      ]);
+          image_url: imageUrl,
+          user_id, // integer
+        },
+      ])
+      .select();
 
     if (insertError) {
-      return res.status(500).json({ error: insertError.message });
+      console.error('Insert error:', insertError);
+      return res.status(500).json({ error: 'Failed to save product' });
     }
 
-    res.status(201).json({ message: 'Medicine product created successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(201).json({
+      message: 'Product created successfully',
+      data: insertData[0],
+    });
+  } catch (error) {
+    console.error('Unexpected error:', error.message);
+    return res.status(500).json({ error: 'Server error' });
   }
 };
 
