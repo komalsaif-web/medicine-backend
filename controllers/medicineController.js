@@ -1,5 +1,3 @@
-// controllers/medicineController.js
-const pool = require('../config/db'); // Make sure this is a MySQL pool
 const supabase = require('../config/supabaseClient');
 
 // Create product
@@ -25,6 +23,7 @@ exports.createProduct = async (req, res) => {
     const file = req.file;
     const filePath = `medicine/${Date.now()}_${file.originalname}`;
 
+    // Upload image to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('medicine-images')
       .upload(filePath, file.buffer, {
@@ -41,24 +40,32 @@ exports.createProduct = async (req, res) => {
 
     const imageUrl = urlData.publicUrl;
 
-    const sql = `
-      INSERT INTO medicine_products (
-        name, generic_name, brand, dosage, category,
-        formula, form, packaging, description, manufacturer,
-        batch_number, manufacturing_date, expiry_date,
-        image_url, price
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    // Insert into Supabase DB (PostgreSQL)
+    const { error: insertError } = await supabase
+      .from('medicine_products')
+      .insert([
+        {
+          name,
+          generic_name: genericName,
+          brand,
+          dosage,
+          category,
+          formula,
+          form,
+          packaging,
+          description,
+          manufacturer,
+          batch_number: batchNumber,
+          manufacturing_date: manufacturingDate,
+          expiry_date: expiryDate,
+          image_url: imageUrl,
+          price,
+        }
+      ]);
 
-    const values = [
-      name, genericName, brand, dosage, category,
-      formula, form, packaging, description, manufacturer,
-      batchNumber, manufacturingDate, expiryDate,
-      imageUrl, price
-    ];
-
-    await pool.execute(sql, values);
+    if (insertError) {
+      return res.status(500).json({ error: insertError.message });
+    }
 
     res.status(201).json({ message: 'Medicine product created successfully' });
   } catch (err) {
@@ -69,8 +76,16 @@ exports.createProduct = async (req, res) => {
 // Get all products
 exports.getAllProducts = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM medicine_products ORDER BY created_at DESC');
-    res.json(rows);
+    const { data, error } = await supabase
+      .from('medicine_products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -80,13 +95,17 @@ exports.getAllProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await pool.query('SELECT * FROM medicine_products WHERE id = ?', [id]);
+    const { data, error } = await supabase
+      .from('medicine_products')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (rows.length === 0) {
+    if (error) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    res.json(rows[0]);
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -96,13 +115,15 @@ exports.getProductById = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const fields = Object.keys(req.body);
-    const values = Object.values(req.body);
 
-    const setClause = fields.map(field => `${field} = ?`).join(', ');
-    const sql = `UPDATE medicine_products SET ${setClause} WHERE id = ?`;
+    const { error } = await supabase
+      .from('medicine_products')
+      .update(req.body)
+      .eq('id', id);
 
-    await pool.execute(sql, [...values, id]);
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
 
     res.json({ message: 'Product updated successfully' });
   } catch (err) {
@@ -110,14 +131,18 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-// Delete product
+// Delete product by ID
 exports.deleteProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const [result] = await pool.execute('DELETE FROM medicine_products WHERE id = ?', [id]);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Product not found' });
+    const { error } = await supabase
+      .from('medicine_products')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
     }
 
     res.json({ message: 'Product deleted successfully' });
@@ -129,7 +154,15 @@ exports.deleteProductById = async (req, res) => {
 // Delete all products
 exports.deleteAllProducts = async (req, res) => {
   try {
-    await pool.execute('DELETE FROM medicine_products');
+    const { error } = await supabase
+      .from('medicine_products')
+      .delete()
+      .neq('id', 0); // deletes all (use with caution)
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
     res.json({ message: 'All products deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
