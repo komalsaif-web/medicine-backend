@@ -1,6 +1,6 @@
-// controllers/medicineController.js
 const pool = require('../config/db');
 const supabase = require('../config/supabaseClient');
+
 exports.createProduct = async (req, res) => {
   try {
     const {
@@ -17,12 +17,13 @@ exports.createProduct = async (req, res) => {
       batch_number,
       manufacturing_date,
       expiry_date,
-      price
+      price,
+      user_id // ✅ Make sure this is coming from req.body
     } = req.body;
 
     const file = req.file;
 
-    // ✅ Upload image to Supabase
+    // ✅ Step 1: Upload image to Supabase Storage
     const filePath = `medicine/${Date.now()}_${file.originalname}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('medicine-images')
@@ -34,13 +35,13 @@ exports.createProduct = async (req, res) => {
       return res.status(500).json({ error: uploadError.message });
     }
 
-    // ✅ Get public URL
+    // ✅ Step 2: Get public image URL
     const { data: urlData } = supabase.storage
       .from('medicine-images')
       .getPublicUrl(filePath);
     const image_url = urlData.publicUrl;
 
-    // ✅ Insert into DB
+    // ✅ Step 3: Insert into medicine_products table
     const result = await pool.query(
       `INSERT INTO medicine_products (
         name,
@@ -57,11 +58,13 @@ exports.createProduct = async (req, res) => {
         manufacturing_date,
         expiry_date,
         image_url,
-        price
+        price,
+        user_id
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15
+        $11, $12, $13, $14, $15,
+        $16
       ) RETURNING *`,
       [
         name,
@@ -78,12 +81,12 @@ exports.createProduct = async (req, res) => {
         manufacturing_date,
         expiry_date,
         image_url,
-        price
+        price,
+        user_id
       ]
     );
 
     res.status(201).json(result.rows[0]);
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
