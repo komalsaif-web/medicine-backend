@@ -1,28 +1,13 @@
-// routes/medicineRoutes.js
 const express = require('express');
 const router = express.Router();
-const controller = require('../controllers/medicineController');
 const multer = require('multer');
+const upload = multer(); // in-memory buffer
+const productController = require('../controllers/medicineController');
 
-// Use multer for file upload; by default, it stores file in memory
-const upload = multer();
-
-// Create a new medicine product with image upload
-router.post('/medicine-products', upload.single('image'), controller.createProduct);
-
-// Get all products
-router.get('/medicine-products', controller.getAllProducts);
-
-// Get product by ID
-router.get('/medicine-products/:id', controller.getProductsByUserId);
-
-// Update product by ID (update fields through JSON body)
-router.put('/medicine-products/:id', controller.updateProductByUserId);
-
-// Delete product by ID
-router.delete('/medicine-products/:id', controller.deleteProductByUserId);
-
-// Delete all products
-router.delete('/medicine-products', controller.deleteAllProducts);
+router.post('/products', upload.single('image'), productController.createProduct);
+router.get('/products/user/:user_id', productController.getProductsByUserId);
+router.get('/products', productController.getAllProducts);
+router.put('/products/:id', productController.updateProductById);
+router.delete('/products/:id', productController.deleteProductById);
 
 module.exports = router;
