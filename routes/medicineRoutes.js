@@ -14,13 +14,13 @@ router.post('/medicine-products', upload.single('image'), controller.createProdu
 router.get('/medicine-products', controller.getAllProducts);
 
 // Get product by ID
-router.get('/medicine-products/:id', controller.getProductById);
+router.get('/medicine-products/:id', controller.getProductsByUserId);
 
 // Update product by ID (update fields through JSON body)
-router.put('/medicine-products/:id', controller.updateProduct);
+router.put('/medicine-products/:id', controller.updateProductByUserId);
 
 // Delete product by ID
-router.delete('/medicine-products/:id', controller.deleteProductById);
+router.delete('/medicine-products/:id', controller.deleteProductByUserId);
 
 // Delete all products
 router.delete('/medicine-products', controller.deleteAllProducts);

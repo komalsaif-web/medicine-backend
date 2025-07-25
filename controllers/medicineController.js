@@ -101,37 +101,43 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-// Controller to get a product by ID
-exports.getProductById = async (req, res) => {
+// 🔍 Get all products for a specific user
+exports.getProductsByUserId = async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await pool.query('SELECT * FROM medicine_products WHERE id = $1', [id]);
+    const { user_id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM medicine_products WHERE user_id = $1 ORDER BY created_at DESC',
+      [user_id]
+    );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: 'No products found for this user' });
     }
 
-    res.json(result.rows[0]);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Controller to update a product by ID
-exports.updateProduct = async (req, res) => {
+// ✏️ Update product(s) for a specific user
+exports.updateProductByUserId = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { user_id } = req.params;
     const fields = Object.keys(req.body);
     const values = Object.values(req.body);
 
-    // Build dynamic SET clause for UPDATE query
+    if (fields.length === 0) {
+      return res.status(400).json({ message: 'No data to update' });
+    }
+
     const setClause = fields.map((field, idx) => `${field} = $${idx + 1}`).join(', ');
-    const query = `UPDATE medicine_products SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *`;
-    const result = await pool.query(query, [...values, id]);
+    const query = `UPDATE medicine_products SET ${setClause} WHERE user_id = $${fields.length + 1} RETURNING *`;
+
+    const result = await pool.query(query, [...values, user_id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: 'No product found for this user' });
     }
 
     res.json(result.rows[0]);
@@ -140,20 +146,26 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-// Controller to delete a product by ID
-exports.deleteProductById = async (req, res) => {
+// 🗑️ Delete all products for a specific user
+exports.deleteProductByUserId = async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await pool.query('DELETE FROM medicine_products WHERE id = $1 RETURNING *', [id]);
+    const { user_id } = req.params;
+
+    const result = await pool.query(
+      'DELETE FROM medicine_products WHERE user_id = $1 RETURNING *',
+      [user_id]
+    );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: 'No product found for this user' });
     }
-    res.json({ message: 'Product deleted successfully' });
+
+    res.json({ message: 'Product(s) deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Controller to delete all products
 exports.deleteAllProducts = async (req, res) => {
