@@ -1,18 +1,10 @@
 const pool = require('../config/db');
 
-// // ✅ Create new user
-// const createUser = async (name, email, phone, hashedPassword) => {
-//   const result = await pool.query(
-//     'INSERT INTO users (name, email, phone, password) VALUES ($1, $2, $3, $4) RETURNING *',
-//     [name, email, phone, hashedPassword]
-//   );
-//   return result.rows[0];
-// };
-
-const createUser = async (name, email, phone, hashedPassword, role = 'buyer') => {
+ // ✅ Create new user
+const createUser = async (name, email, phone, hashedPassword) => {
   const result = await pool.query(
-    'INSERT INTO users (name, email, phone, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [name, email, phone, hashedPassword, role]
+    'INSERT INTO users (name, email, phone, password) VALUES ($1, $2, $3, $4) RETURNING *',
+    [name, email, phone, hashedPassword]
   );
   return result.rows[0];
 };
@@ -115,6 +107,22 @@ const getAllUsers = async () => {
 const deleteAllUsers = async () => {
   return await pool.query('DELETE FROM users');
 };
+const updateUserAllowedStatus = async (userId, isAllowed) => {
+  const result = await pool.query(
+    'UPDATE users SET is_allowed = $1 WHERE id = $2',
+    [isAllowed, userId]
+  );
+  return result.rowCount > 0;
+};
+// ✅ Update user role
+const updateUserRole = async (userId, role) => {
+  const result = await pool.query(
+    'UPDATE users SET role = $1 WHERE id = $2',
+    [role, userId]
+  );
+  return result.rowCount > 0;
+};
+
 
 // ✅ Export all functions
 module.exports = {
@@ -131,4 +139,6 @@ module.exports = {
   getUserById,
   deleteUserById,
    deleteAllUsers,
+   updateUserAllowedStatus,
+   updateUserRole,
 };

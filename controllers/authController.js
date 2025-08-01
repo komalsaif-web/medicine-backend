@@ -16,7 +16,9 @@ const {
   deleteUserById,
   getUserByEmail,
   getAllUsers,
-   deleteAllUsers
+   deleteAllUsers,
+   updateUserAllowedStatus,
+   updateUserRole
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
@@ -342,6 +344,50 @@ const deleteAllUsersController = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete all users', error: error.message });
   }
 };
+
+// ✅ Change is_allowed status
+const changeAllowedStatus = async (req, res) => {
+  try {
+    const { id, is_allowed } = req.body;
+
+    if (!id || typeof is_allowed === 'undefined') {
+      return res.status(400).json({ message: 'User ID and is_allowed value are required' });
+    }
+
+    const updated = await updateUserAllowedStatus(id, is_allowed);
+    if (updated) {
+      res.status(200).json({ message: `User permission updated to ${is_allowed}` });
+    } else {
+      res.status(404).json({ message: 'User not found or update failed' });
+    }
+  } catch (error) {
+    console.error('Change Allowed Status Error:', error);
+    res.status(500).json({ message: 'Failed to change allowed status', error: error.message });
+  }
+};
+const {  } = require('../models/userModel');
+
+// ✅ Change user role manually
+const changeUserRole = async (req, res) => {
+  try {
+    const { id, role } = req.body;
+
+    if (!id || !role) {
+      return res.status(400).json({ message: 'User ID and role are required' });
+    }
+
+    const updated = await updateUserRole(id, role);
+    if (updated) {
+      res.status(200).json({ message: `User role updated to ${role}` });
+    } else {
+      res.status(404).json({ message: 'User not found or update failed' });
+    }
+  } catch (error) {
+    console.error('Change Role Error:', error);
+    res.status(500).json({ message: 'Failed to change role', error: error.message });
+  }
+};
+
 module.exports = {
   signup,
   resendOtp,
@@ -355,5 +401,7 @@ module.exports = {
   deleteUserAccount,
   getUserByEmailController,
   getAllUsersController,
-  deleteAllUsersController
+  deleteAllUsersController,
+  changeAllowedStatus,
+  changeUserRole
 };

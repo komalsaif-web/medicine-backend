@@ -13,7 +13,9 @@ const {
   sendOtp,
   getUserByEmailController,
   getAllUsersController,
-  deleteAllUsersController
+  deleteAllUsersController,
+  changeAllowedStatus,
+  changeUserRole
 } = require('../controllers/authController');
 
 router.post('/signup', signup);
@@ -29,5 +31,7 @@ router.post('/resend-otp', resendOtp);
 router.get('/email/:email', getUserByEmailController);
 router.get('/all-users', getAllUsersController);
 router.delete('/delete-all-users', deleteAllUsersController); 
+router.post('/change-allowed', changeAllowedStatus);
+router.post('/change-role', changeUserRole);
 module.exports = router;
  
