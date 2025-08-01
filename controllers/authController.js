@@ -365,7 +365,6 @@ const changeAllowedStatus = async (req, res) => {
     res.status(500).json({ message: 'Failed to change allowed status', error: error.message });
   }
 };
-const {  } = require('../models/userModel');
 
 // ✅ Change user role manually
 const changeUserRole = async (req, res) => {
