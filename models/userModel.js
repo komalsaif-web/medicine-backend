@@ -1,16 +1,55 @@
 const pool = require('../config/db');
 
- // ✅ Create new user
-const createUser = async (name, email, phone, hashedPassword) => {
+// ✅ Create new user (Full Payload)
+const createUser = async ({
+  name,
+  email,
+  password,
+  registration_number,
+  license_document_url,
+  contact_person,
+  phone_number,
+  address,
+  verified_by_admin = false,
+  is_blacklisted = false,
+  role,
+}) => {
   const result = await pool.query(
-    'INSERT INTO users (name, email, phone, password) VALUES ($1, $2, $3, $4) RETURNING *',
-    [name, email, phone, hashedPassword]
+    `INSERT INTO users (
+      name, email, password,
+      registration_number,
+      license_document_url,
+      contact_person,
+      phone_number,
+      address,
+      verified_by_admin,
+      is_blacklisted,
+      role
+    ) VALUES (
+      $1, $2, $3,
+      $4, $5, $6,
+      $7, $8, $9,
+      $10, $11
+    ) RETURNING *`,
+    [
+      name,
+      email,
+      password,
+      registration_number,
+      license_document_url,
+      contact_person,
+      phone_number,
+      address,
+      verified_by_admin,
+      is_blacklisted,
+      role
+    ]
   );
   return result.rows[0];
 };
 
 // ✅ Find user by email
-const findUserByEmail = async (email) => {
+const getUserByEmail = async (email) => {
   const result = await pool.query(
     'SELECT * FROM users WHERE email = $1',
     [email]
@@ -19,10 +58,10 @@ const findUserByEmail = async (email) => {
 };
 
 // ✅ Find user by phone
-const findUserByPhone = async (phone) => {
+const findUserByPhone = async (phone_number) => {
   const result = await pool.query(
-    'SELECT * FROM users WHERE phone = $1',
-    [phone]
+    'SELECT * FROM users WHERE phone_number = $1',
+    [phone_number]
   );
   return result.rows[0];
 };
@@ -37,17 +76,18 @@ const updateUserPassword = async (userId, hashedPassword) => {
 
 // ✅ Update OTP and expiry
 const updateUserOtp = async (userId, otp, expireMs) => {
-  const expire = new Date(expireMs); // Convert timestamp to Date
+  const expire = new Date(expireMs);
   await pool.query(
     'UPDATE users SET otp = $1, otp_expire = $2 WHERE id = $3',
     [otp, expire, userId]
   );
 };
 
-// ✅ Verify OTP with expiry
+// ✅ Verify OTP
 const verifyOtp = async (email, otp) => {
   const result = await pool.query(
-    'SELECT * FROM users WHERE email = $1 AND otp = $2 AND otp_expire > NOW()',
+    `SELECT * FROM users 
+     WHERE email = $1 AND otp = $2 AND otp_expire > NOW()`,
     [email, otp]
   );
   return result.rows[0];
@@ -61,23 +101,10 @@ const markUserVerified = async (userId) => {
   );
 };
 
-// ✅ Dynamically update user fields
-const updateUserFields = async (userId, updates) => {
-  const keys = Object.keys(updates);
-  if (keys.length === 0) return false;
-
-  const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
-  const values = [...Object.values(updates), userId];
-  const query = `UPDATE users SET ${setClause} WHERE id = $${keys.length + 1}`;
-
-  const result = await pool.query(query, values);
-  return result.rowCount > 0;
-};
-
 // ✅ Get user by ID
 const getUserById = async (id) => {
   const result = await pool.query(
-    'SELECT id, name, email, phone, is_verified FROM users WHERE id = $1',
+    'SELECT * FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0];
@@ -92,53 +119,44 @@ const deleteUserById = async (userId) => {
   return result.rowCount > 0;
 };
 
-// ✅ Get full user by email
-const getUserByEmail = async (email) => {
-  const result = await pool.query(
-    'SELECT id, name, email, phone, is_verified FROM users WHERE email = $1',
-    [email]
-  );
-  return result.rows[0];
-};
+// ✅ Get all users
 const getAllUsers = async () => {
-  const result = await pool.query('SELECT id, name, email, phone, is_verified FROM users ORDER BY created_at DESC');
+  const result = await pool.query(
+    'SELECT * FROM users ORDER BY created_at DESC'
+  );
   return result.rows;
 };
+
+// ✅ Delete all users
 const deleteAllUsers = async () => {
   return await pool.query('DELETE FROM users');
 };
-const updateUserAllowedStatus = async (userId, isAllowed) => {
-  const result = await pool.query(
-    'UPDATE users SET is_allowed = $1 WHERE id = $2',
-    [isAllowed, userId]
-  );
-  return result.rowCount > 0;
-};
-// ✅ Update user role
-const updateUserRole = async (userId, role) => {
-  const result = await pool.query(
-    'UPDATE users SET role = $1 WHERE id = $2',
-    [role, userId]
-  );
-  return result.rowCount > 0;
+
+const updateUserById = async (id, updates) => {
+  const fields = Object.keys(updates);
+  const values = Object.values(updates);
+
+  if (fields.length === 0) return null;
+
+  const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+
+  const query = `UPDATE users SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *`;
+
+  const result = await pool.query(query, [...values, id]);
+  return result.rows[0];
 };
 
-
-// ✅ Export all functions
 module.exports = {
   createUser,
-   getAllUsers,
-  findUserByEmail,
-  findUserByPhone,
   getUserByEmail,
+  findUserByPhone,
   updateUserPassword,
   updateUserOtp,
   verifyOtp,
   markUserVerified,
-  updateUserFields,
+  updateUserById,
   getUserById,
   deleteUserById,
-   deleteAllUsers,
-   updateUserAllowedStatus,
-   updateUserRole,
+  getAllUsers,
+  deleteAllUsers,
 };

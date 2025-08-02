@@ -5,20 +5,16 @@ const CryptoJS = require('crypto-js');
 
 const {
   createUser,
-  findUserByEmail,
   findUserByPhone,
-  updateUserPassword,
   updateUserOtp,
   verifyOtp,
   markUserVerified,
-  updateUserFields,
   getUserById,
   deleteUserById,
   getUserByEmail,
   getAllUsers,
    deleteAllUsers,
-   updateUserAllowedStatus,
-   updateUserRole
+   updateUserById ,
 } = require('../models/userModel');
 
 // 📧 Send OTP via email
@@ -187,59 +183,6 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// ✅ RESET PASSWORD
-const resetPassword = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and new password are required' });
-    }
-
-    const user = await findUserByEmail(email);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const hashed = await bcrypt.hash(password, 10);
-    await updateUserPassword(user.id, hashed);
-
-    res.status(200).json({ message: 'Password reset successful' });
-  } catch (error) {
-    res.status(500).json({ message: 'Password reset failed', error: error.message });
-  }
-};
-
-// ✅ UPDATE USER INFO
-const updateUserInfo = async (req, res) => {
-  try {
-    const userId = req.params.id;
-    const { email, phone, password, name } = req.body;
-
-    if (!userId) return res.status(400).json({ message: 'User ID is required' });
-    if (!email && !phone && !password && !name) {
-      return res.status(400).json({ message: 'At least one field is required to update' });
-    }
-
-    const updates = {};
-    if (email) updates.email = email;
-    if (phone) updates.phone = phone;
-    if (name) updates.name = name;
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updates.password = hashedPassword;
-    }
-
-    const updated = await updateUserFields(userId, updates);
-
-    if (updated) {
-      res.status(200).json({ message: 'User updated successfully' });
-    } else {
-      res.status(500).json({ message: 'Update failed' });
-    }
-  } catch (error) {
-    console.error('Update Error:', error);
-    res.status(500).json({ message: 'Update failed', error: error.message });
-  }
-};
 
 // ✅ GET USER BY ID
 const getUserDetails = async (req, res) => {
@@ -344,46 +287,34 @@ const deleteAllUsersController = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete all users', error: error.message });
   }
 };
-
-// ✅ Change is_allowed status
-const changeAllowedStatus = async (req, res) => {
+const updateUser = async (req, res) => {
   try {
-    const { id, is_allowed } = req.body;
+    const { id } = req.params;
+    const updates = req.body;
 
-    if (!id || typeof is_allowed === 'undefined') {
-      return res.status(400).json({ message: 'User ID and is_allowed value are required' });
+    if (!id) {
+      return res.status(400).json({ message: 'User ID is required' });
     }
 
-    const updated = await updateUserAllowedStatus(id, is_allowed);
-    if (updated) {
-      res.status(200).json({ message: `User permission updated to ${is_allowed}` });
-    } else {
-      res.status(404).json({ message: 'User not found or update failed' });
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'At least one field is required to update' });
     }
+
+    // If password is being updated, hash it
+    if (updates.password) {
+      updates.password = await bcrypt.hash(updates.password, 10);
+    }
+
+    const updatedUser = await updateUserById(id, updates);
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found or update failed' });
+    }
+
+    res.status(200).json({ message: 'User updated successfully', user: updatedUser });
   } catch (error) {
-    console.error('Change Allowed Status Error:', error);
-    res.status(500).json({ message: 'Failed to change allowed status', error: error.message });
-  }
-};
-
-// ✅ Change user role manually
-const changeUserRole = async (req, res) => {
-  try {
-    const { id, role } = req.body;
-
-    if (!id || !role) {
-      return res.status(400).json({ message: 'User ID and role are required' });
-    }
-
-    const updated = await updateUserRole(id, role);
-    if (updated) {
-      res.status(200).json({ message: `User role updated to ${role}` });
-    } else {
-      res.status(404).json({ message: 'User not found or update failed' });
-    }
-  } catch (error) {
-    console.error('Change Role Error:', error);
-    res.status(500).json({ message: 'Failed to change role', error: error.message });
+    console.error('Update User Error:', error);
+    res.status(500).json({ message: 'Failed to update user', error: error.message });
   }
 };
 
@@ -394,13 +325,10 @@ module.exports = {
   login,
   sendOtp,
   forgotPassword,
-  resetPassword,
-  updateUserInfo,
   getUserDetails,
   deleteUserAccount,
   getUserByEmailController,
   getAllUsersController,
   deleteAllUsersController,
-  changeAllowedStatus,
-  changeUserRole
+  updateUser 
 };
