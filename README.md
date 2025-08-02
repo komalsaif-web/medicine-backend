@@ -26,15 +26,15 @@ This is a Node.js + Express backend for managing user authentication, feedback, 
 | POST   | `/send-otp`                | Send OTP for verification            |
 | POST   | `/verify-otp`              | Verify OTP code                      |
 | POST   | `/login`                   | User login                           |
-| POST   | `/forgot-password`         | Send reset link/code                 |
-| POST   | `/reset-password`          | Reset user password                  |
-| PUT    | `/update-user/:id`         | Update user information              |
-| GET    | `/user/:userId`            | Get user details                     |
-| DELETE | `/delete/:id`              | Delete user account                  |
+| POST   | `/forgot-password`         | Send reset link/code                 |         
+| GET    | `/get-user/:userId`        | Get user details                     |
+| DELETE | `/delete-user/:id`         | Delete user account                  |
 | POST   | `/resend-otp`              | Resend OTP to user                   |
-| GET    | `/email/:email`            | Get user by email                    |
-| GET    | `/all-users`               | Get all users                        |
+| GET    | `/get-user-by-email/:email`| Get user by email                    |
+| GET    | `/get-all-users`           | Get all users                        |
 | DELETE | `/delete-all-users`        | Delete all users (admin use)         |
+| Update | `/update-user/:id`         | Update all users (admin use)         |
+
 
 ---
 
