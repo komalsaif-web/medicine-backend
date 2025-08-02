@@ -145,10 +145,19 @@ const updateUserById = async (id, updates) => {
   const result = await pool.query(query, [...values, id]);
   return result.rows[0];
 };
+// ✅ Find user by email
+const findUserByEmail = async (email) => {
+  const result = await pool.query(
+    'SELECT * FROM users WHERE email = $1',
+    [email]
+  );
+  return result.rows[0]; // null return hoga agar user na mile
+};
 
 module.exports = {
   createUser,
   getUserByEmail,
+  findUserByEmail,
   findUserByPhone,
   updateUserPassword,
   updateUserOtp,

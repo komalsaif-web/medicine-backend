@@ -13,6 +13,7 @@ const {
   deleteUserById,
   getUserByEmail,
   getAllUsers,
+  findUserByEmail,
    deleteAllUsers,
    updateUserById ,
 } = require('../models/userModel');
