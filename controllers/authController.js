@@ -2,6 +2,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const CryptoJS = require('crypto-js');
+const supabase = require('../config/supabaseClient');
+const { v4: uuidv4 } = require('uuid');
+
 
 const {
   createUser,
@@ -356,6 +359,37 @@ const updateUser = async (req, res) => {
 };
 
 
+const uploadImage = async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: 'No file uploaded' });
+
+    const filename = `${uuidv4()}_${file.originalname}`;
+    const bucketName = 'medicine-images'; // replace with your actual Supabase bucket
+
+    // Upload to Supabase bucket
+    const { error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(filename, file.buffer, {
+        contentType: file.mimetype,
+        upsert: true
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data } = supabase.storage.from(bucketName).getPublicUrl(filename);
+
+    res.status(200).json({
+      message: 'Image uploaded successfully',
+      url: data.publicUrl
+    });
+  } catch (error) {
+    console.error('Upload Error:', error.message);
+    res.status(500).json({ message: 'Upload failed', error: error.message });
+  }
+};
+
 
 module.exports = {
   signup,
@@ -369,5 +403,6 @@ module.exports = {
   getUserByEmailController,
   getAllUsersController,
   deleteAllUsersController,
-  updateUser 
+  updateUser ,
+  uploadImage 
 };
