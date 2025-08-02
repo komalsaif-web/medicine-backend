@@ -30,6 +30,6 @@ router.get('/get-user-by-email/:email', getUserByEmailController);
 router.get('/get-all-users', getAllUsersController);
 router.delete('/delete-all-users', deleteAllUsersController); 
 router.put('/update-user/:id', updateUser);
-router.post('/upload', upload.single('image'), uploadImage);
+router.post('/upload-single-image', upload.single('image'), uploadImage);
 module.exports = router;
  
