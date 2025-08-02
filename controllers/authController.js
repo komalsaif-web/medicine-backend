@@ -38,7 +38,7 @@ const sendOtpEmail = async (email, otp) => {
 // ✅ SIGNUP FUNCTION with token
 const signup = async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone_number, password } = req.body;
 
     // ✅ Only name, email, and password are required now
     if (!name || !email || !password) {
@@ -51,7 +51,7 @@ const signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await createUser(name, email, phone || null, hashedPassword); // ✅ default to null if not provided
+    const user = await createUser(name, email, phone_number || null, hashedPassword); // ✅ default to null if not provided
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
@@ -63,7 +63,7 @@ const signup = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        phone: user.phone,
+        phone_number: user.phone_number,
         is_verified: false
       }
     });
