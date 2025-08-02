@@ -27,7 +27,7 @@ This is a Node.js + Express backend for managing user authentication, feedback, 
 | POST   | `/verify-otp`              | Verify OTP code                      |
 | POST   | `/login`                   | User login                           |
 | POST   | `/forgot-password`         | Send reset link/code                 |         
-| GET    | `/get-user/:userId`        | Get user details                     |
+| GET    | `/get-user/:id`        | Get user details                     |
 | DELETE | `/delete-user/:id`         | Delete user account                  |
 | POST   | `/resend-otp`              | Resend OTP to user                   |
 | GET    | `/get-user-by-email/:email`| Get user by email                    |
