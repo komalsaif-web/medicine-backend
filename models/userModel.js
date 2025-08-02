@@ -101,6 +101,7 @@ const deleteAllUsers = async () => {
   return await pool.query('DELETE FROM users');
 };
 
+// ✅ Update user by ID
 const updateUserById = async (id, updates) => {
   const fields = Object.keys(updates);
   const values = Object.values(updates);

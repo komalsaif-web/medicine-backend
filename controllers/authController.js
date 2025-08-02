@@ -86,7 +86,7 @@ const signup = async (req, res) => {
     const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
 
     res.status(201).json({
-      message: 'Signup successful. Please verify your email separately.',
+      message: 'Signup successful.',
       token: encryptedToken,
       user: {
         id: user.id,
@@ -332,7 +332,7 @@ const updateUser = async (req, res) => {
       return res.status(400).json({ message: 'At least one field is required to update' });
     }
 
-    // If password is being updated, hash it
+    // ✅ Hash password if included
     if (updates.password) {
       updates.password = await bcrypt.hash(updates.password, 10);
     }
@@ -346,9 +346,16 @@ const updateUser = async (req, res) => {
     res.status(200).json({ message: 'User updated successfully', user: updatedUser });
   } catch (error) {
     console.error('Update User Error:', error);
+
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'Email already exists', error: error.detail });
+    }
+
     res.status(500).json({ message: 'Failed to update user', error: error.message });
   }
 };
+
+
 
 module.exports = {
   signup,
