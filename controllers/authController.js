@@ -219,11 +219,11 @@ const forgotPassword = async (req, res) => {
 // ✅ GET USER BY ID
 const getUserDetails = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { id} = req.params;
 
-    if (!userId) return res.status(400).json({ message: 'User ID is required' });
+    if (!id) return res.status(400).json({ message: 'User ID is required' });
 
-    const user = await getUserById(userId);
+    const user = await getUserById(id);
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 

@@ -20,7 +20,7 @@ router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtpCode);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
-router.get('/get-user/:userId', getUserDetails);
+router.get('/get-user/:id', getUserDetails);
 router.delete('/delete-user/:id', deleteUserAccount);
 router.post('/resend-otp', resendOtp);
 router.get('/get-user-by-email/:email', getUserByEmailController);
