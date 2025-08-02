@@ -5,7 +5,7 @@ const CryptoJS = require('crypto-js');
 
 const {
   createUser,
-  findUserByPhone,
+  findUserByphone_number,
   updateUserOtp,
   verifyOtp,
   markUserVerified,
@@ -63,7 +63,7 @@ const signup = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        phone_number: user.phone_number,
+        phone_number_number: user.phone_number,
         is_verified: false
       }
     });
@@ -129,12 +129,12 @@ const login = async (req, res) => {
     const { loginId, password } = req.body;
 
     if (!loginId || !password) {
-      return res.status(400).json({ message: 'Email/Phone and Password are required' });
+      return res.status(400).json({ message: 'Email/phone_number and Password are required' });
     }
 
     const user = loginId.includes('@')
       ? await findUserByEmail(loginId)
-      : await findUserByPhone(loginId);
+      : await findUserByphone_number(loginId);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -159,7 +159,7 @@ const login = async (req, res) => {
       user: {
         name: user.name,
         email: user.email,
-        phone: user.phone
+        phone_number: user.phone_number
       }
     });
   } catch (error) {

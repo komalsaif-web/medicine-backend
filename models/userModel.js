@@ -15,7 +15,7 @@ const createUser = async ({
   role,
 }) => {
   const result = await pool.query(
-    `INSERT INTO userspharmacy (
+    `INSERT INTO users (
       name, email, password,
       registration_number,
       license_document_url,
@@ -51,7 +51,7 @@ const createUser = async ({
 // ✅ Find user by email
 const getUserByEmail = async (email) => {
   const result = await pool.query(
-    'SELECT * FROM userspharmacy WHERE email = $1',
+    'SELECT * FROM users WHERE email = $1',
     [email]
   );
   return result.rows[0];
@@ -60,7 +60,7 @@ const getUserByEmail = async (email) => {
 // ✅ Find user by phone
 const findUserByPhone = async (phone_number) => {
   const result = await pool.query(
-    'SELECT * FROM userspharmacy WHERE phone_number = $1',
+    'SELECT * FROM users WHERE phone_number = $1',
     [phone_number]
   );
   return result.rows[0];
@@ -69,7 +69,7 @@ const findUserByPhone = async (phone_number) => {
 // ✅ Update user password
 const updateUserPassword = async (userId, hashedPassword) => {
   await pool.query(
-    'UPDATE userspharmacy SET password = $1 WHERE id = $2',
+    'UPDATE users SET password = $1 WHERE id = $2',
     [hashedPassword, userId]
   );
 };
@@ -78,7 +78,7 @@ const updateUserPassword = async (userId, hashedPassword) => {
 const updateUserOtp = async (userId, otp, expireMs) => {
   const expire = new Date(expireMs);
   await pool.query(
-    'UPDATE userspharmacy SET otp = $1, otp_expire = $2 WHERE id = $3',
+    'UPDATE users SET otp = $1, otp_expire = $2 WHERE id = $3',
     [otp, expire, userId]
   );
 };
@@ -86,7 +86,7 @@ const updateUserOtp = async (userId, otp, expireMs) => {
 // ✅ Verify OTP
 const verifyOtp = async (email, otp) => {
   const result = await pool.query(
-    `SELECT * FROM userspharmacy 
+    `SELECT * FROM users 
      WHERE email = $1 AND otp = $2 AND otp_expire > NOW()`,
     [email, otp]
   );
@@ -96,7 +96,7 @@ const verifyOtp = async (email, otp) => {
 // ✅ Mark user as verified
 const markUserVerified = async (userId) => {
   await pool.query(
-    'UPDATE userspharmacy SET is_verified = true WHERE id = $1',
+    'UPDATE users SET is_verified = true WHERE id = $1',
     [userId]
   );
 };
@@ -104,7 +104,7 @@ const markUserVerified = async (userId) => {
 // ✅ Get user by ID
 const getUserById = async (id) => {
   const result = await pool.query(
-    'SELECT * FROM userspharmacy WHERE id = $1',
+    'SELECT * FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0];
@@ -113,23 +113,23 @@ const getUserById = async (id) => {
 // ✅ Delete user by ID
 const deleteUserById = async (userId) => {
   const result = await pool.query(
-    'DELETE FROM userspharmacy WHERE id = $1',
+    'DELETE FROM users WHERE id = $1',
     [userId]
   );
   return result.rowCount > 0;
 };
 
-// ✅ Get all userspharmacy
-const getAlluserspharmacy = async () => {
+// ✅ Get all users
+const getAllusers = async () => {
   const result = await pool.query(
-    'SELECT * FROM userspharmacy ORDER BY created_at DESC'
+    'SELECT * FROM users ORDER BY created_at DESC'
   );
   return result.rows;
 };
 
-// ✅ Delete all userspharmacy
-const deleteAlluserspharmacy = async () => {
-  return await pool.query('DELETE FROM userspharmacy');
+// ✅ Delete all users
+const deleteAllusers = async () => {
+  return await pool.query('DELETE FROM users');
 };
 
 const updateUserById = async (id, updates) => {
@@ -140,7 +140,7 @@ const updateUserById = async (id, updates) => {
 
   const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
 
-  const query = `UPDATE userspharmacy SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *`;
+  const query = `UPDATE users SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *`;
 
   const result = await pool.query(query, [...values, id]);
   return result.rows[0];
@@ -148,7 +148,7 @@ const updateUserById = async (id, updates) => {
 // ✅ Find user by email
 const findUserByEmail = async (email) => {
   const result = await pool.query(
-    'SELECT * FROM userspharmacy WHERE email = $1',
+    'SELECT * FROM users WHERE email = $1',
     [email]
   );
   return result.rows[0]; // null return hoga agar user na mile
@@ -166,6 +166,6 @@ module.exports = {
   updateUserById,
   getUserById,
   deleteUserById,
-  getAlluserspharmacy,
-  deleteAlluserspharmacy,
+  getAllusers,
+  deleteAllusers,
 };
