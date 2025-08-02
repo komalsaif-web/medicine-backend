@@ -35,24 +35,53 @@ const sendOtpEmail = async (email, otp) => {
     text: `Your OTP is ${otp}. It will expire in 1 minute.`,
   });
 };
-// ✅ SIGNUP FUNCTION with token
+// ✅ Signup Controller
 const signup = async (req, res) => {
   try {
-    const { name, email, phone_number, password } = req.body;
+    const {
+      name,
+      email,
+      password,
+      registration_number,
+      license_document_url,
+      contact_person,
+      phone_number,
+      address,
+      verified_by_admin,
+      is_blacklisted,
+      role
+    } = req.body;
 
-    // ✅ Only name, email, and password are required now
+    // Validate required fields
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
+    // Check for existing user
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return res.status(409).json({ message: 'User already exists with this email' });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await createUser(name, email, phone_number || null, hashedPassword); // ✅ default to null if not provided
 
+    // Create user
+    const user = await createUser({
+      name,
+      email,
+      password: hashedPassword,
+      registration_number: registration_number || null,
+      license_document_url: license_document_url || null,
+      contact_person: contact_person || null,
+      phone_number: phone_number || null,
+      address: address || null,
+      verified_by_admin: verified_by_admin || false,
+      is_blacklisted: is_blacklisted || false,
+      role: role || 'pharmacist' // default to pharmacist if not provided
+    });
+
+    // JWT Token
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const encryptedToken = CryptoJS.AES.encrypt(token, process.env.ENCRYPTION_SECRET).toString();
 
@@ -63,8 +92,8 @@ const signup = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        phone_number_number: user.phone_number,
-        is_verified: false
+        phone_number: user.phone_number,
+        is_verified: user.is_verified
       }
     });
   } catch (error) {
@@ -72,6 +101,8 @@ const signup = async (req, res) => {
     res.status(500).json({ message: 'Signup failed', error: error.message });
   }
 };
+
+
 
 const sendOtp = async (req, res) => {
   try {
