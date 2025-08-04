@@ -81,7 +81,7 @@ const signup = async (req, res) => {
       address: address || null,
       verified_by_admin: verified_by_admin || false,
       is_blacklisted: is_blacklisted || false,
-      role: role || 'pharmacist' // default to pharmacist if not provided
+      role: role || 'user' // default to user if not provided
     });
 
     // JWT Token
