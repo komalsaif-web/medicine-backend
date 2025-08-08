@@ -1,4 +1,4 @@
-const supabase = require('../config/db'); // Supabase client
+const pool = require('../config/db'); // PostgreSQL pool connection
 
 // POST: upload scan info
 exports.uploadScanInfo = async (req, res) => {
@@ -9,16 +9,16 @@ exports.uploadScanInfo = async (req, res) => {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        const { data, error } = await supabase
-            .from('scan_info')
-            .insert([
-                { medicineName, medicineCompany, longitude, latitude, dateTime, potency, status }
-            ])
-            .select(); // returns inserted row
+        const query = `
+            INSERT INTO scan_info (medicineName, medicineCompany, longitude, latitude, dateTime, potency, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
+        `;
 
-        if (error) throw error;
+        const values = [medicineName, medicineCompany, longitude, latitude, dateTime, potency, status];
+        const result = await pool.query(query, values);
 
-        res.status(201).json({ message: "Scan info uploaded successfully", id: data[0].id });
+        res.status(201).json({ message: "Scan info uploaded successfully", id: result.rows[0].id });
     } catch (err) {
         console.error("Error inserting data:", err);
         res.status(500).json({ message: "Database error", error: err.message });
@@ -28,14 +28,8 @@ exports.uploadScanInfo = async (req, res) => {
 // GET: all scan info
 exports.getAllScanInfo = async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('scan_info')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        res.json(data);
+        const result = await pool.query(`SELECT * FROM scan_info ORDER BY created_at DESC`);
+        res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: "Database error", error: err.message });
     }
@@ -45,15 +39,8 @@ exports.getAllScanInfo = async (req, res) => {
 exports.getByCompany = async (req, res) => {
     try {
         const { company } = req.params;
-
-        const { data, error } = await supabase
-            .from('scan_info')
-            .select('*')
-            .eq('medicineCompany', company);
-
-        if (error) throw error;
-
-        res.json(data);
+        const result = await pool.query(`SELECT * FROM scan_info WHERE medicineCompany = $1`, [company]);
+        res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: "Database error", error: err.message });
     }
@@ -63,16 +50,11 @@ exports.getByCompany = async (req, res) => {
 exports.getCompanyAuthenticScans = async (req, res) => {
     try {
         const { company } = req.params;
-
-        const { data, error } = await supabase
-            .from('scan_info')
-            .select('*')
-            .eq('medicineCompany', company)
-            .eq('status', 'authentic');
-
-        if (error) throw error;
-
-        res.json(data);
+        const result = await pool.query(
+            `SELECT * FROM scan_info WHERE medicineCompany = $1 AND status = 'authentic'`,
+            [company]
+        );
+        res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: "Database error", error: err.message });
     }
@@ -82,16 +64,11 @@ exports.getCompanyAuthenticScans = async (req, res) => {
 exports.getCompanyFakeScans = async (req, res) => {
     try {
         const { company } = req.params;
-
-        const { data, error } = await supabase
-            .from('scan_info')
-            .select('*')
-            .eq('medicineCompany', company)
-            .eq('status', 'fake');
-
-        if (error) throw error;
-
-        res.json(data);
+        const result = await pool.query(
+            `SELECT * FROM scan_info WHERE medicineCompany = $1 AND status = 'fake'`,
+            [company]
+        );
+        res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: "Database error", error: err.message });
     }
