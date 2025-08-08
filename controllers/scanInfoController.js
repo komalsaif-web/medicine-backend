@@ -35,12 +35,10 @@ exports.getAllScanInfo = async (req, res) => {
     }
 };
 
-// GET: by company name
+// GET: by company name (case/space insensitive)
 exports.getByCompany = async (req, res) => {
     try {
         let { company } = req.params;
-
-        // Normalize input: lowercase and remove spaces
         company = company.toLowerCase().replace(/\s+/g, '');
 
         const query = `
@@ -50,39 +48,46 @@ exports.getByCompany = async (req, res) => {
         `;
 
         const result = await pool.query(query, [company]);
-
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ 
-            message: "Database error", 
-            error: err.message 
-        });
-    }
-};
-
-
-// GET: company authentic scans
-exports.getCompanyAuthenticScans = async (req, res) => {
-    try {
-        const { company } = req.params;
-        const result = await pool.query(
-            `SELECT * FROM scan_info WHERE medicineCompany = $1 AND status = 'authentic'`,
-            [company]
-        );
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: "Database error", error: err.message });
     }
 };
 
-// GET: company fake scans
+// GET: company authentic scans (case/space insensitive)
+exports.getCompanyAuthenticScans = async (req, res) => {
+    try {
+        let { company } = req.params;
+        company = company.toLowerCase().replace(/\s+/g, '');
+
+        const query = `
+            SELECT * 
+            FROM scan_info 
+            WHERE REPLACE(LOWER(medicineCompany), ' ', '') = $1
+            AND status = 'authentic'
+        `;
+
+        const result = await pool.query(query, [company]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ message: "Database error", error: err.message });
+    }
+};
+
+// GET: company fake scans (case/space insensitive)
 exports.getCompanyFakeScans = async (req, res) => {
     try {
-        const { company } = req.params;
-        const result = await pool.query(
-            `SELECT * FROM scan_info WHERE medicineCompany = $1 AND status = 'fake'`,
-            [company]
-        );
+        let { company } = req.params;
+        company = company.toLowerCase().replace(/\s+/g, '');
+
+        const query = `
+            SELECT * 
+            FROM scan_info 
+            WHERE REPLACE(LOWER(medicineCompany), ' ', '') = $1
+            AND status = 'fake'
+        `;
+
+        const result = await pool.query(query, [company]);
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: "Database error", error: err.message });
