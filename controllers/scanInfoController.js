@@ -38,13 +38,28 @@ exports.getAllScanInfo = async (req, res) => {
 // GET: by company name
 exports.getByCompany = async (req, res) => {
     try {
-        const { company } = req.params;
-        const result = await pool.query(`SELECT * FROM scan_info WHERE medicineCompany = $1`, [company]);
+        let { company } = req.params;
+
+        // Normalize input: lowercase and remove spaces
+        company = company.toLowerCase().replace(/\s+/g, '');
+
+        const query = `
+            SELECT * 
+            FROM scan_info 
+            WHERE REPLACE(LOWER(medicineCompany), ' ', '') = $1
+        `;
+
+        const result = await pool.query(query, [company]);
+
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ message: "Database error", error: err.message });
+        res.status(500).json({ 
+            message: "Database error", 
+            error: err.message 
+        });
     }
 };
+
 
 // GET: company authentic scans
 exports.getCompanyAuthenticScans = async (req, res) => {
