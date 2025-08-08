@@ -32,6 +32,7 @@ const authRoute = require('./routes/authRoutes');
 const ratingRoute = require('./routes/ratingRoutes');
 const googleRoutes = require('./routes/googleUserRoutes')
 const medicineProduct = require('./routes/medicineRoutes')
+const scanInfoRoutes = require('./routes/scanInfoRoutes');
 // API endpoints
 app.use('/api', feedbackRoute);
 app.use('/api', purchaseRoute);
@@ -39,6 +40,8 @@ app.use('/api', authRoute);
 app.use('/api', ratingRoute);
 app.use('/api', googleRoutes);
 app.use('/api', medicineProduct);
+app.use('/api', scanInfoRoutes);
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.send('Welcome to the Pharmacy Medicine API');
