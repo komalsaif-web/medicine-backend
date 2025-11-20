@@ -24,20 +24,23 @@ const {
 // 📧 Send OTP via email
 const sendOtpEmail = async (email, otp) => {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true, 
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
+      pass: process.env.EMAIL_PASS // Must be App Password !!!
+    },
   });
 
   await transporter.sendMail({
     from: `"PHARMASENZ" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Your OTP Code',
+    subject: "Your OTP Code",
     text: `Your OTP is ${otp}. It will expire in 1 minute.`,
   });
 };
+
 // ✅ Signup Controller
 const signup = async (req, res) => {
   try {
